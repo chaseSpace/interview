@@ -197,6 +197,8 @@ HTTP 长连接允许客户端通过请求头 `Connection: keep-alive` 告知服�
 
 **Nginx设置HTTP长连接**
 
+<details><summary>点击展开</summary>
+
 ```shell
 # nginx.conf
 
@@ -228,6 +230,9 @@ upstream backend {
     keepalive_requests 200;
 }
 ```
+
+</details>
+
 
 **设置不当导致Nginx出现大量TIME_WAIT**
 
