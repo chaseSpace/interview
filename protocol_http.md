@@ -241,7 +241,71 @@ upstream backend {
 - keepalive_requests 设置比较小，而 QPS 较大，导致Nginx频繁关闭与客户端的TCP连接
 - keepalive 设置过小，而 QPS 较大，导致Nginx频繁关闭与上游的TCP连接
 
-### 1.8 跨域请求
+### 1.8 跨源资源共享
+
+CORS（Cross-Origin Resource Sharing，跨源资源共享）是一种机制，它允许来自不同源（域名、协议或端口）的Web页面访问另一个源的资源。
+CORS的引入是为了解决浏览器同源策略（Same-Origin Policy）带来的限制，同时确保Web应用的安全性。
+
+#### 1.8.1 背景
+
+在Web开发中，同源策略是一种安全协议，它限制了一个源（origin）的文档或脚本如何与另一个源的资源进行交互。这意味着，
+如果你的Web应用（例如 https://www.example.com ）尝试通过JavaScript发起请求来访问不同源的服务器（例如
+https://api.different.com ），浏览器会出于安全考虑阻止这种跨源请求。这种限制对于保护用户数据和防止恶意操作是非常重要的。
+
+然而，这种限制也给开发者带来了挑战，尤其是在构建需要与多个服务或API进行交互的复杂Web应用时。为了解决这个问题，
+W3C制定了CORS标准，允许服务器通过HTTP响应头来指定哪些源可以访问其资源。
+
+#### 1.8.2 原理
+
+CORS的工作原理主要依赖于HTTP头部字段，服务器通过这些字段来告诉浏览器允许哪些跨源请求。以下是CORS工作原理的关键步骤：
+
+- 预检请求（Preflight Request）：当浏览器检测到一个跨源请求时，首先会发送一个预检请求（`OPTIONS`请求），
+  询问服务器是否允许跨源请求。预检请求中包含 `Origin` 头部字段，表明了实际请求的源。
+- CORS响应头：服务器在响应预检请求时，会设置一些CORS响应头，如 `Access-Control-Allow-Origin`，来指定允许访问的源。
+  如果服务器允许跨源请求，它可能会返回 `*`（表示允许所有源）或者指定的源。
+- 实际请求：如果服务器在预检响应中允许跨源请求，浏览器将发送实际的请求。如果服务器不允许，浏览器将阻止实际请求的发送。
+- 处理响应：当浏览器接收到服务器的响应时，会检查响应头中的CORS字段，如 `Access-Control-Allow-Methods` 和
+  `Access-Control-Allow-Headers`，确保这些字段允许实际请求中使用的方法和头部字段。
+
+一共涉及的HTTP头部字段：
+
+- 首先是预检请求中的头部字段：
+    - `Origin`：表明请求的源。
+    - `Access-Control-Request-Method`：表明实际请求使用的HTTP方法。
+    - `Access-Control-Request-Headers`：表明实际请求中使用的头部字段。
+- 然后是预检请求响应中的头部字段（将服务器的要求告知浏览器）：
+    - `Access-Control-Allow-Origin`：指定允许访问的源。
+    - `Access-Control-Allow-Methods`：指定允许的HTTP方法。
+    - `Access-Control-Allow-Headers`：指定允许的头部字段。
+    - `Access-Control-Allow-Credentials`：指定是否允许发送Cookie。
+    - `Access-Control-Expose-Headers`：指定允许暴露给浏览器的头部字段。
+    - `Access-Control-Max-Age`：指定针对当前请求的预检请求的有效期，单位为秒。
+
+> [!WARNING]
+> **对于附带Cookie的跨源请求**:
+> - 服务器需要在响应中设置 `Access-Control-Allow-Credentials` 字段为 `true`;
+> - 同时，`Access-Control-Allow-Origin` 字段不能为 `*`，必须指定明确的、与请求网页一致的域名，否则浏览器会阻止请求发送。
+
+#### 1.8.3 简单请求
+
+在CORS中，不是所有跨域请求都需要发出预检请求。符合简单请求（Simple Request）条件的请求可以直接发送，而不需要预检请求。
+
+简单请求的条件：
+
+- 请求方法是以下三种方法之一：`GET`、`HEAD`、`POST`
+- 请求头仅包含安全的字段，常见的安全字段如下：
+    - `Accept`、`Accept-Language`、`Content-Language`、`Content-Type`（注意额外的限制）
+    - `Content-Type` 标头值限定为下列三者之一：
+        - `text/plain`
+        - `multipart/form-data`
+        - `application/x-www-form-urlencoded`
+    - `Range`（只允许简单的范围标头值 如 `bytes=256-` 或 `bytes=127-255`）
+
+请求过程：
+
+- 浏览器直接发送携带`Origin`的简单请求给服务器，服务器检查是否允许`Origin`访问
+    - 如果允许，则返回响应，其中包含`Access-Control-Allow-Origin`头部；
+    - 如果拒绝，则仍然返回响应，但不会包含`Access-Control-Allow-Origin`头部，此时浏览器会阻止JS读取响应（**待求证**）；
 
 ### 1.9 安全问题
 
