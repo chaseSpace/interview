@@ -78,7 +78,7 @@
 - If-Modified-Since：用于条件 GET 请求，告诉服务器只有在指定日期之后被修改过的资源才会被发送，用于缓存优化
     - 示例：`If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT`（当服务器资源最后修改时间未变化时返回 304）
 - If-None-Match：类似上个，用于缓存优化，包含资源的当前 ETag 值而不是最后修改时间，如果资源未更改，则服务器可以返回 304 状态码。
-    - 示例：If-None-Match: "abcdefg"（当服务器资源 Etag 未变化时返回 304）
+    - 示例：`If-None-Match: abcdefg`（当服务器资源 Etag 未变化时返回 304）
 
 ### 1.4 常见的 Content-Type
 
@@ -154,10 +154,11 @@
 客户端（通常是浏览器）可以将获取的资源保存在本地，下次请求相同的资源时可以直接从本地缓存中获取。
 客户端缓存通过设置 HTTP 头部来控制缓存的行为，常用的头部包括：Cache-Control、Expires、ETag、Last-Modified 等。
 
-- Expires：这个头部字段提供了一个日期/时间，之后响应被认为过时。这是 HTTP/1.0 的头部字段，在 HTTP/1.1 中已经被 Cache-Control 替代。
+- Expires：这个头部字段提供了一个日期/时间，之后响应被认为过时。这是 HTTP/1.0 的头部字段，在 HTTP/1.1 中已经被 Cache-Control
+  替代。
     - 如果 Cache-Control 头部字段存在，Expires 通常不会被使用。
 - Cache-Control：这是最重要的缓存头部字段，它提供了关于如何缓存响应的指令。例如，`Cache-Control: max-age=3600`
-  表示资源可以被 缓   存1小时。
+  表示资源可以被 缓 存1小时。
     - 其支持的值包括：private、public、no-cache、max-age，no-store，默认为 private
     - private：客户端可以缓存响应，但只能在与原始服务器通信时使用该响应。
     - public：客户端和代理服务器都可以缓存响应。
@@ -171,14 +172,14 @@
     - 客户端可以使用这个时间来发出条件性请求，即如果资源未更改，服务器可以返回 304 Not Modified。
 - ETag：这是一个资源的特定版本的标识符，通常与请求头 If-None-Match 配合使用。
     - 客户端可以存储这个 ETag 值，并在后续的请求中使用 If-None-Match
-头部字段来验证资源是否已更改，服务端仅在 Etag 不匹配的情况下返回完整的资源，否则返回 304 Not Modified。
+      头部字段来验证资源是否已更改，服务端仅在 Etag 不匹配的情况下返回完整的资源，否则返回 304 Not Modified。
     - 若客户端同时设置了 If-Modified-Since 和 If-None-Match 头部字段，则优先使用后者，且当后者有变化时不再判断前者。
 
 **强制缓存与协商缓存**
 
 - 强制缓存：指的是 Expires 和 Cache-Control，强制缓存表示在缓存有效时直接使用缓存数据，不请求服务器。
 - 协商缓存：指的是 Last-Modified 和 ETag，协商缓存表示在缓存失效时向服务器发出请求以验证缓存有效性，服务器验证缓存的确失效时返回新的资源，
-若缓存有效则返回 304 Not Modified。
+  若缓存有效则返回 304 Not Modified。
 
 ### 1.7 长连接
 
@@ -392,9 +393,10 @@ Ref：[Amazon 文章](https://aws.amazon.com/cn/compare/the-difference-between-s
 
 1-RTT：
 
-- ClientHello：客户端发送一个 ClientHello 消息，其中包含客户端支持的**TLS 版本**、**加密套件列表**和 32 字节随机数（简称 c-random）。
+- ClientHello：客户端发送一个 ClientHello 消息，其中包含客户端支持的**TLS 版本**、**加密套件列表**和 32 字节随机数（简称
+  c-random）。
 - ServerHello：**服务器**发送一个 ServerHello 消息（回复 ClientHello 消息），其中包含服务器的 SSL
-证书、选择的加密套件、服务器生成的 32 字节随机数（简称**s-random**）。
+  证书、选择的加密套件、服务器生成的 32 字节随机数（简称**s-random**）。
     - 身份验证：客户端使用颁发该证书的证书颁发机构（CA）验证服务器的 SSL 证书。
 
 至此 Hello 过程完成，开始预主密钥交换。
@@ -506,7 +508,7 @@ HTTP/2，也被称为**H2**，是 HTTP 协议的第二个主要版本，于 2015
 
 在 HTTP/2 中，数据传输是通过流（Stream）来实现的。一个流可以被看作是一个双向的通信通道，可以在客户端和服务器之间传输数据。
 流由一系列帧（Frame）组成，每个帧携带了部分数据以及与该数据相关的控制信息。而消息（Message）则是应用层的数据单元，
-在 HTTP/2 中分拆解为多个帧来传输。
+在 HTTP/2 中被拆解为多个帧来传输。
 
 #### 3.2.1 流（Stream）
 
@@ -519,8 +521,9 @@ HTTP/2 中的流（Stream）是一个运行在 TCP 连接上的用于交换 HTTP
 - 对于客户端建立的 Stream，要求 ID 是奇数，通常是执行请求-响应模式
 - 对于服务端建立的 Stream，要求 ID 是偶数，通常是执行推送模式
 
+> [!NOTE]
 > **一条流上的数据帧必须是有序发送的（Header 帧在 Data 帧之前）**。为了达到并发传输的目的，
-HTTP/2 允许在一个 TCP 连接上启用多条流，多条流上的数据帧可以并行发送。
+> HTTP/2 允许在一个 TCP 连接上建立多条流，多条流上的数据帧可以交错发送。
 
 #### 3.2.2 帧（Frame）
 
