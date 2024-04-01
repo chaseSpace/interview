@@ -38,9 +38,9 @@
 <img src="./img/https_clienthello.png" width="821" height="550"> </img> 
 </div>
 
-开始前需要先了解TLS记录层协议，TLS 在实现上通过一个**具有分层特点的TLS 记录层**
+开始前需要先了解TLS记录层协议，TLS 在实现上通过一个**具有分层性的TLS 记录层**
 来承载所有TLS协议子类型（协议中叫做`Content-Type`）消息，
-包括握手、警报、更改密码规范和用于传输上层数据的应用数据类型。一个 TLS 记录层消息可能因为过长而被分割为几个TCP包发送。
+**一个 TLS 记录层消息可以包含多个子类型消息**，然后因此过长而被分割为几个TCP包发送。
 每个子类型都是一个独立的消息体，其中包含ContentType、Version、Length、Data。
 
 下面开始分析。

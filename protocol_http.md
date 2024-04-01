@@ -452,12 +452,12 @@ Ref：
 
 #### 2.1.4 TLS 如何保证数据完整性
 
-TLS 在实现上通过一个**具有分层特点的TLS 记录层**来承载所有TLS协议子类型（协议中叫做`Content-Type`）消息，
-包括握手、警报、更改密码规范和用于传输上层数据的应用数据类型。一个 TLS 记录层消息可能因为过长而被分割为几个TCP包发送。
+TLS 在实现上通过一个**具有分层性的TLS 记录层**来承载TLS协议子类型（协议中叫做`Content-Type`）消息，
+**一个 TLS 记录层消息可以包含多个子类型单元**，然后因此过长而被分割为几个TCP包发送。每个子类型单元都是一个独立的消息体，
+其中包含ContentType、Version、Length、Data。
 
-所谓的分层是指一个TLS 记录层包可以由多个 TLS 记录层单元组成，每个单元包含一个 TLS 记录层类型、版本、长度和数据。
-TLS 记录层单元的类型包括：change_cipher_spec、alert、handshake、application_data，即上面描述的几种消息。
-所以我们在wireshark抓包TLS时，会看到一个TLS包承载了多个握手消息。
+一个TLS 记录层单元的类型包括：change_cipher_spec、alert、handshake、application_data，
+我们在wireshark抓包TLS时，会看到一个TLS包承载了多个握手消息单元。
 
 当TLS握手完成后（开始加密通信时），交付给TLS的应用层数据会二进制分片到每个TLS记录层单元，具体处理过程如下：
 
