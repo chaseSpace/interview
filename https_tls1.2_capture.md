@@ -21,7 +21,7 @@
 ### 截图
 
 <div align="left">
-<img src="./img/https_dump.png" width="1400" height="252"> </img> 
+<img src="./img/https_dump.png" width="1200" height="152"> </img> 
 </div>
 
 ### 分析
@@ -29,43 +29,48 @@
 跟随IETF中描述的握手过程来分析
 
 <div align="left">
-<img src="./img/https_handshake_ietf.png" width="821" height="460"> </img> 
+<img src="./img/https_handshake_ietf.png" width="600" height="400"> </img> 
 </div>
 
 #### 1. C->ClientHello
 
-客户端发送Hello消息，外层的Hello消息是TLS 1.0版本用于基本沟通，其ContentType是Handshake，表示这个是一个握手消息，
-则TLS记录层将消息的帧部分解析为握手消息。在握手消息中包含：
+<div align="left">
+<img src="./img/https_clienthello.png" width="821" height="550"> </img> 
+</div>
+
+开始前需要先了解TLS记录层协议，TLS 在实现上通过一个**具有分层特点的TLS 记录层**
+来承载所有TLS协议子类型（协议中叫做`Content-Type`）消息，
+包括握手、警报、更改密码规范和用于传输上层数据的应用数据类型。一个 TLS 记录层消息可能因为过长而被分割为几个TCP包发送。
+每个子类型都是一个独立的消息体，其中包含ContentType、Version、Length、Data。
+
+下面开始分析。
+
+截图中的TLS记录层包只包含一种子类型消息，即握手消息（`Handshake`）。而握手消息又细分多个类型（下面说明），这里是`Client Hello`。
+在握手消息中包含：
 
 - 握手类型：ClientHello
     - 其他还有hello_request、server_hello、certificate、server_key_exchange、certificate_request、server_hello_done、
       certificate_verify、client_key_exchange、finished
-- 长度：x
+- 长度：192
 - 客户端支持的最高TLS版本：TLS 1.2，这也是客户端希望的握手TLS版本
     - 服务器若不支持这个版本，也可选择较低的版本，否则应该回复一个alert消息提示握手失败。
-- 支持的TLS版本（通过Extension部分列出）
-    - 但Extension的support_versions部分并不总是会发送（如使用curl），当没有发送时，服务器应将握手消息版本认定为客户端支持的版本
-- 32位客户端随机数
+- 仅支持的TLS版本列表：通过`Extension: support_versions`部分列出，服务器只能从中选择一个版本进行握手，若都不支持则回复警报消息。
+    - 但此字段并不总是会发送，当没有发送时，服务器可以选择小于等于`Version`字段指定的版本
+- Random：32位客户端随机数
 - Session ID长度：0
     - 非0时说明恢复一个之前的session
 - Session ID：无
-    - 但ID长度非0时此字段非空，说明正在恢复一个已存在的session，否则是一个新的TCP连接
+    - 但ID长度非0时此字段非空，说明正在恢复一个已存在的session，否则是一个新的TLS会话
 - 支持的密码套件列表长度：32（共16个，每个占2字节）
 - 支持的密码套件列表
     - 以 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 为例
-        - ECDHE：使用椭圆曲线Diffie-Hellman密钥交换算法
-        - RSA：使用RSA验证服务器身份
+        - ECDHE：使用基于椭圆曲线的Diffie-Hellman密钥交换算法（用于交换预主密钥）
+        - RSA：使用RSA作为签名算法验证服务器身份
         - AES_128_GCM：使用128位AES对称加密算法，GCM模式
-        - SHA256：使用SHA256哈希算法验证数据完整性
-- 支持的压缩方法列表：null（那么ServerHello消息也无从选择）
+        - SHA256：使用SHA256哈希算法对消息进行哈希，验证其完整性
+- 支持的压缩方法列表：此处列表为空，Server也只能是空
 - Extension字段：可选，用来实现扩展功能
     - 例如通过扩展字段`supported_signature_algorithms`来表示客户端希望用于签名和哈希的算法组合
-
-> 握手过程中的每个消息都是（基于TCP的）TLS消息，而不是TCP消息。
-
-<div align="left">
-<img src="./img/https_clienthello.png" width="821" height="600"> </img> 
-</div>
 
 #### 2. S->ServerHello
 
@@ -89,7 +94,7 @@ Server回复一条ServerHello类型的TLS握手消息。
 - Extension列表：。。。
     - ServerHello中的扩展类型必需在ClientHello的Extensions列表中存在，否则客户端应该中断握手（使用alert消息）
 
-#### 3. S->Certificate/ServerKeyExchange/ServerHelloDone
+#### 3. S->Certificate/...
 
 <div align="left">
 <img src="./img/https_handshake_1rtt_cert.png" width="1000" height="800"> </img> 
@@ -113,7 +118,7 @@ Server继续回复三条类型不同的TLS握手消息，根据消息长度，�
     - 此消息意味着ServerHello消息的所有信息都已发送完毕，也象征着第一次RTT完成。
     - ServerHelloDone消息本身不包含任何数据，它只是一个通知。
 
-#### 4. C->Certificate/ClientKeyExchange/CipherChangeSpec/Finished
+#### 4. C->Certificate/...
 
 <div align="left">
 <img src="./img/https_handshake_2rtt_client.png" width="1300" height="700"> </img> 
@@ -145,7 +150,7 @@ Server继续回复三条类型不同的TLS握手消息，根据消息长度，�
     - 用于签名的哈希和签名算法必须是服务器在CertificateRequest消息中指定的 supported_signature_algorithms 字段中列出的算法之一。
     - 此外，所使用的哈希和签名算法必须与客户端证书中的密钥类型兼容。RSA密钥可以与任何允许的哈希算法一起使用，除非证书中有限制。
 
-#### 5. S->CipherChangeSpec/Finished
+#### 5. S->CipherChangeSpec/...
 
 服务器会在收到客户端的Finish消息后回复 CipherChangeSpec和Finished消息，它的作用与客户端的CipherChangeSpec和Finished消息相同。
 
