@@ -2,21 +2,19 @@
 
 首先安装wireshark。本文抓包分析过程完全按实际抓包结果和IETF文档进行，不涉及任何猜测。
 
-- [IETF文档-TLS 1.2](https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4)
+- [RFC 5246 - TLS 1.2](https://datatracker.ietf.org/doc/html/rfc5246)
 
 ### 抓包
 
 网站提供：
 
-- https://www.topgoer.cn （tls 1.3）
 - https://go.cyub.vip （tls 1.2）
-- 首先确定分析的tls版本，再选择对应的网站，这里选择第二个
-
     - 浏览器访问网站查看地址栏起始处的小锁可知服务器（与浏览器协商）使用的TLS版本
-- 打开cmd，执行`ping go.cyub.vip`获得网站ip
-- 启动wireshark，选择上网网卡，开始抓包，在软件过滤器中输入`ip.addr eq $IP and tls`
-- **通过curl访问**网站，观察wireshark抓包结果，命令：`curl https://go.cyub.vip -I`
+- 打开cmd，执行`ping go.cyub.vip`获得网站ip，例如: 45.32.254.163
+- 启动wireshark，选择上网网卡，开始抓包，在软件过滤器中输入`ip.addr eq 45.32.254.163 and tls`
+- **通过linux系统内置的curl访问**网站，观察wireshark抓包结果，命令：`curl https://go.cyub.vip -I`
     - 第一次抓包不要使用浏览器访问，因为很有可能抓到**恢复会话**的握手过程，而不是首次握手
+    - 经笔者测试，PowerShell下的curl是有保持会话的功能的，所以抓取首次握手时，请使用linux系统内置的curl。
 
 ### 截图
 
@@ -26,10 +24,10 @@
 
 ### 分析
 
-跟随IETF中描述的握手过程来分析
+跟随RFC中描述的握手过程来分析
 
 <div align="left">
-<img src="./img/https_handshake_ietf.png" width="600" height="400"> </img> 
+<img src="./img/https_handshake_rfc_tls12.png" width="700" height="430"> </img> 
 </div>
 
 #### 1. C->ClientHello
@@ -38,10 +36,10 @@
 <img src="./img/https_clienthello.png" width="821" height="550"> </img> 
 </div>
 
-开始前需要先了解TLS记录层协议，TLS 在实现上通过一个**具有分层性的TLS 记录层**
-来承载所有TLS协议子类型（协议中叫做`Content-Type`）消息，
-**一个 TLS 记录层消息可以包含多个子类型消息**，然后因此过长而被分割为几个TCP包发送。
-每个子类型都是一个独立的消息体，其中包含ContentType、Version、Length、Data。
+开始前需要先了解TLS记录层协议。TLS 记录层是TLS协议的一个关键组成部分，它负责在两个通信实体之间安全地传输TLS数据。TLS 记录层
+**将数据分割成多个记录**，每个记录都包含ContentType、Version、Length字段和Fragment部分，Fragment部分将在密钥协商完成后加密传输。
+一个 TLS 记录层消息的类型包括：change_cipher_spec/alert/handshake/application_data，
+在wireshark抓包TLS时，会看到一个TLS记录层承载了多个记录消息。
 
 下面开始分析。
 
@@ -54,13 +52,11 @@
 - 长度：192
 - 客户端支持的最高TLS版本：TLS 1.2，这也是客户端希望的握手TLS版本
     - 服务器若不支持这个版本，也可选择较低的版本，否则应该回复一个alert消息提示握手失败。
-- 仅支持的TLS版本列表：通过`Extension: support_versions`部分列出，服务器只能从中选择一个版本进行握手，若都不支持则回复警报消息。
+- 仅支持的TLS版本列表：通过Extension`supported_versions`部分列出，服务器只能从中选择一个版本进行握手，若都不支持则回复警报消息。
     - 但此字段并不总是会发送，当没有发送时，服务器可以选择小于等于`Version`字段指定的版本
 - Random：32位客户端随机数
 - Session ID长度：0
-    - 非0时说明恢复一个之前的session
-- Session ID：无
-    - 但ID长度非0时此字段非空，说明正在恢复一个已存在的session，否则是一个新的TLS会话
+    - 非0时说明恢复一个之前的session，并且 Session ID 字段非空
 - 支持的密码套件列表长度：32（共16个，每个占2字节）
 - 支持的密码套件列表
     - 以 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 为例
@@ -202,6 +198,8 @@ DH（Diffie-Hellman）是一个安全的密钥交换协议，他可以让双方�
 此时客户端会在发送的ClientHello消息中直接填充SessionID字段，若服务器接收恢复之前这个SessionID，
 则ServerHello消息中的SessionID字段也会保持一致，并随后发送CipherChangeSpec和Finish消息，表示立即开始加密通信；
 当然，客户端也需要回复CipherChangeSpec消息，表示同意立即开始加密通信。
+
+会话恢复相比首次握手，少了密钥交换和证书验证步骤，从2-RTT减少到了1.5-RTT。
 
 ### 关于握手消息结构
 
