@@ -43,7 +43,8 @@
 
 下面开始分析。
 
-截图中的 TLS 记录层包只包含一种子类型消息，即握手消息（`Handshake`）。而握手消息又细分多个类型（下面说明），这里是`Client Hello`。
+截图中的 TLS 记录层包只包含一种子类型消息，即握手消息（`Handshake`
+）。而握手消息又细分多个类型（下面说明），这里是`Client Hello`。
 在握手消息中包含：
 
 - 握手类型：ClientHello
@@ -74,7 +75,7 @@
 <img src="./img/https_serverhello.png" width="821" height="550"> </img> 
 </div>
 
-Server 回复一条 ServerHello 类型的 TLS 握手消息。理解了 ClientHello，ServerHello 就很好理解了，其仍然是一条 ContentType 
+Server 回复一条 ServerHello 类型的 TLS 握手消息。理解了 ClientHello，ServerHello 就很好理解了，其仍然是一条 ContentType
 为`Handshake`的 TLS 消息，其中的帧部分解析为握手消息：
 
 - 握手类型：ServerHello
@@ -90,7 +91,7 @@ Server 回复一条 ServerHello 类型的 TLS 握手消息。理解了 ClientHel
 - Extension 列表：。。。
     - ServerHello 中的扩展类型必需在 ClientHello 的 Extensions 列表中存在，否则客户端应该中断握手（使用 alert 消息）
 
-#### 3. S->Certificate/
+#### 3. S->Certificate/...
 
 <div align="left">
 <img src="./img/https_handshake_1rtt_cert.png" width="1000" height="800"> </img> 
@@ -117,7 +118,7 @@ Server 继续回复三条类型不同的 TLS 握手消息，根据消息长度�
     - 此消息意味着 ServerHello 消息的所有信息都已发送完毕，也象征着第一次 RTT 完成。
     - ServerHelloDone 消息本身不包含任何数据，它只是一个通知。
 
-#### 4. C->Certificate/
+#### 4. C->Certificate/...
 
 <div align="left">
 <img src="./img/https_handshake_2rtt_client.png" width="1300" height="700"> </img> 
@@ -150,7 +151,7 @@ Server 继续回复三条类型不同的 TLS 握手消息，根据消息长度�
     - 用于签名的哈希和签名算法必须是服务器在 CertificateRequest 消息中指定的 supported_signature_algorithms 字段中列出的算法之一。
     - 此外，所使用的哈希和签名算法必须与客户端证书中的密钥类型兼容。RSA 密钥可以与任何允许的哈希算法一起使用，除非证书中有限制。
 
-#### 5. S->CipherChangeSpec/
+#### 5. S->CipherChangeSpec/...
 
 服务器会在收到客户端的 Finish 消息后回复 CipherChangeSpec 和 Finished 消息，它的作用与客户端的 CipherChangeSpec 和
 Finished 消息相同。
@@ -165,7 +166,7 @@ Finished 消息相同。
   48 字节。
 - 随机值：双端在 Hello 消息中已完成交换。
 
-前文说过，在 Hello 阶段协商出的密钥交换算法主要有两种：RSA 和 DH（Diffie-Hellman），
+前文说过，在 Hello 阶段协商出的密钥交换算法主要有两种：RSA 和 DH（Diffie-Hellman）家族，
 这两种交换算法对应的**预主密钥生成方法是不同的**。
 
 #### 对于 RSA 密钥交换算法
@@ -173,26 +174,30 @@ Finished 消息相同。
 如果双端在 Hello 消息协商使用 RSA 密钥交换算法，由客户端生成一个 46 字节的随机值作为预主密钥，并通过服务器证书公钥将其加密后发送给服务器，
 后者使用私钥解密即可得到预主密钥。后续再按照与客户端相同的方式计算出主密钥。
 
-#### 对于 DH 密钥交换算法
-
-### 关于 ECDHE 密钥交换算法
-
-ECDHE 是 DH 的改进版本，它使用椭圆曲线密码学来加强性能和安全性。
+#### 关于 DH 家族密钥交换算法
 
 DH（Diffie-Hellman）是一个安全的密钥交换协议，他可以让双方在完全没有对方任何预先信息的条件下通过不安全的信道安全地协商出一个密钥，
 该密钥可用于后续的通信中用作对称密钥来加密内容。该算法由 Diffie 和 Hellman 在 1976 年发明。
 虽然 DH 密钥交换本身是一个匿名（无认证）的密钥交换协议，它却是很多认证协议的基础。
 
-假定 A 和 B 要进行通信，他们事先不知道对方任何信息：
+DHE（Diffie-Hellman Ephemeral）和ECDHE（Elliptic Curve Diffie-Hellman Ephemeral）是两种用于安全通信的密钥交换算法。
+它们都属于Diffie-Hellman密钥交换家族，但使用了不同的数学基础和参数。其中DHE是早期系统中使用较多的密钥交换算法，ECDHE则是后起之秀，
+在相同安全性的前提下，ECDHE在性能和资源消耗方面都优于DHE。
+TLS 1.2和TLS 1.3 两种算法都支持。
+
+DH家族算法的基本原理都是相同的，下面以ECDHE为例来解释其工作原理。
+
+假定 A 和 B 要协商一个共享密钥，他们事先不知道对方任何信息：
 
 - A 和 B 分别随机生成椭圆曲线上的点（随机整数）作为私钥，这些私钥将用于计算共享密钥；
 - A 选择一条椭圆曲线，并结合该曲线公开的 G 点计算出自己的 DH 公钥，将曲线名称和公钥发送给 B；
     - 每条曲线都有一个全世界已知的 G 点
 - B 同样在该曲线中选择一个随机数作为私钥，并结合 G 点计算出自己的 DH 公钥，将公钥发送给 A；
 - 此时 A 和 B 都拥有对方的 DH 公钥和自己的私钥，随后通过椭圆曲线算法计算出共享密钥（Shared_Key）
-    - 共享密钥通常作为其他加密算法的密钥，用于后续通信的加密和认证
 
-> 在 DH 算法发明后不久出现了 RSA，是另一个用于密钥交换的算法，它使用了非对称加密算法。
+共享密钥通常作为其他加密算法的密钥，用于后续通信的加密和认证。
+
+> 在 DH 算法发明后不久出现了 RSA，是另一个用于密钥交换的算法，它使用了非对称加密算法，但它的安全性不如 ECDHE。
 
 ### 会话恢复抓包
 
