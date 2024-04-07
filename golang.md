@@ -1,6 +1,6 @@
 # Go 基础篇
 
-本文档不会介绍 Golang 的基础语法或特性，文中的代码示例均通过验证，但理论方面可能需要考证。
+本文档不会介绍 Golang 的基础语法或特性，文中的代码示例均通过验证，但理论方面部分摘自网络，可能需要考证。
 
 ## 语言的优缺点
 
@@ -343,6 +343,44 @@ func TestTrimSpace(t *testing.T) {
 }
 ```
 
+## Go 调度实现
+
+### Go 调度器
+
+Go 调度器是 Go 语言运行时的一个核心组件，负责管理协程的调度和执行。
+
+### GPM 模型
+
+GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型，它使用一个全局调度器来管理多个协程的调度和执行。
+其中：
+
+- **Goroutine**：Go 语言中的协程，是 Go 语言并发编程的基本单元，一个协程的初始栈大小为 2KB（远小于线程的 2MB）。
+- **Processor**：逻辑上的 CPU 核心，调度实体，负责将 Goroutine 分配给可用的 Machine 执行。
+    - 每个 P 维护一个本地G队列，调度器维护一个全局G队列，都用于保存等待执行的 Goroutine。
+    - 当某个 P 的本地队列为空时，会尝试从其他 P 的队列中获取 G 执行，这叫做工作窃取（work-stealing）。
+    - 每个P会定期从全局队列中窃取G来执行，避免其中的G被饿死。
+    - （最开始没有本地队列，它的引入是一种分段锁的思想）
+- **Machine**：代表操作系统层面的线程，是真正执行 Goroutine 的实体。
+    - 当 Goroutine 进行系统调用或channel/IO阻塞操作时，它会被 P 挂起，然后调度下一个 G 执行。
+    - 当挂起的 G 被唤醒（通常是阻塞结束）时，M 会重新分配给 P，然后继续执行。
+
+简单来说，P 调度 M 来执行 G。
+
+### 抢占式调度
+
+抢占式调度是一种操作系统中常用的调度策略，它允许调度器在任何时候中断正在执行的任务，将其挂起，并切换到另一个任务执行。
+这种调度方式主要用于确保系统的响应性和资源的公平分配。Go 调度器在 1.13 以前支持基于协作的抢占式调度，从 1.14 开始支持基于信号的
+**真** 抢占式调度。
+
+- 基于协作的抢占式调度：通过编译器在函数调用时插入抢占检查指令，在函数调用时检查当前 Goroutine
+  是否发起了抢占请求，若是就让控制权给调度器，否则继续执行；
+- 基于信号的抢占式调度：调度器会根据情况给正在执行 Goroutine 的 M 发送系统信号，迫使 Goroutine 让出控制权，使得 M 可以执行其他
+  Goroutine。
+
+> [!NOTE]
+> 在 Go 1.14 以前，Go 实现的是协作式调度，它依赖于协程自己决定在合适的时机（比如系统调用或 IO 阻塞时）让出 CPU 控制权。
+> 这样的问题是，如果协程不会运行系统调用或进入 IO 阻塞，那么它将一直占用 CPU 资源，导致其他协程无法运行。
+
 ## 并发编程
 
 ### 进程、线程和协程
@@ -370,48 +408,194 @@ func TestTrimSpace(t *testing.T) {
     - 并行处理可以显著加快程序的执行速度，因为多个处理器可以同时执行不同的任务或同时执行一个大型任务的不同部分。
     - 并行计算通常用于处理**计算密集型**任务，如科学模拟、数据分析和图形渲染等。
 
-### Go 调度器
+### CSP 并发模型
 
-Go 调度器是 Go 语言运行时的一个核心组件，负责管理协程的调度和执行。
+CSP（Communicating Sequential Process）并发模型，最初由计算机科学家 Tony Hoare 在 1978 年提出。CSP
+模型的核心概念是通过通信来协调并发执行的进程或线程，而不是共享内存。CSP 是Go的并发哲学。
 
-### GPM 模型
+通俗来说，CSP鼓励在线程（或协程）通过消息传递来实现同步访问，而不是通过锁机制。CSP 模型的优点如下：
 
-GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型，它使用一个全局调度器来管理多个协程的调度和执行。
-其中：
-
-- **Goroutine**：Go 语言中的协程，是 Go 语言并发编程的基本单元，一个协程的初始栈大小为 2KB（远小于线程的 2MB）。
-- **Processor**：逻辑上的 CPU 核心，调度实体，负责将 Goroutine 分配给可用的 Machine 执行。
-    - 每个 P 维护一个本地队列，用于保存等待执行的 Goroutine。当某个 P 的本地队列为空时，会尝试从其他 P 的队列中获取
-      Goroutine 执行，这叫做工作窃取（work
-      stealing）。
-    - 调度器还会维护一个全局队列，每个 P 都会定期从中获取 Goroutine 执行（否则全局队列中的 G 会饿死）。
-- **Machine**：代表操作系统层面的线程，是真正执行 Goroutine 的实体。
-    - 当 Goroutine 进行系统调用或其他阻塞操作时，它会被 P 挂起，然后调度下一个 G 执行。
-    - 当挂起的 G 被唤醒（通常是 IO 任务完成）时，M 会重新分配给 P，然后继续执行。
-
-简单来说，P 调度 M 来执行 G。
-
-### 抢占式调度
-
-抢占式调度是一种操作系统中常用的调度策略，它允许调度器在任何时候中断正在执行的任务，将其挂起，并切换到另一个任务执行。
-这种调度方式主要用于确保系统的响应性和资源的公平分配。Go 调度器在 1.13 以前支持基于协作的抢占式调度，从 1.14 开始支持基于信号的
-**真** 抢占式调度。
-
-- 基于协作的抢占式调度：通过编译器在函数调用时插入抢占检查指令，在函数调用时检查当前 Goroutine
-  是否发起了抢占请求，若是就让控制权给调度器，否则继续执行；
-- 基于信号的抢占式调度：调度器会根据情况给正在执行 Goroutine 的 M 发送系统信号，迫使 Goroutine 让出控制权，使得 M 可以执行其他
-  Goroutine。
-
-> [!NOTE]
-> 在 Go 1.14 以前，Go 实现的是协作式调度，它依赖于协程自己决定在合适的时机（比如系统调用或 IO 阻塞时）让出 CPU 控制权。
-> 这样的问题是，如果协程不会运行系统调用或进入 IO 阻塞，那么它将一直占用 CPU 资源，导致其他协程无法运行。
-
-### 共享内存和共享变量
+- **简化并发编程**：CSP 模型通过 channel 来进行 Goroutine 之间的通信，避免了复杂的锁操作和同步机制，使得并发编程更加简单直观。
+- **提高可读性和可维护性**：CSP 模型的代码通常更加清晰，因为它强调的是数据流和通信，而不是状态的同步和互斥。
+- **更轻量**：编程语言在内部实现中对 channel 进行优化，使得 channel 性能高于互斥锁。
 
 ### 竞态条件
 
-### 与 Rust 并发模型比较
+当多个 Goroutine 同时读写同一个共享资源时，就会出现竞态条件。如果不对竞态条件进行同步处理，程序可能会出现不可预测的结果。
 
-### 与 Erlang 并发模型比较
+Go 使用`-race`选项来检测并发程序中的竞态条件。
+
+```
+go test -race mypkg
+go run -race mysrc.go
+go build -race mycmd
+go install -race mypkg
+```
+
+当存在竞态条件时，Go 会在标准错误中输出警告信息，这个参数通常会用在测试和CI脚本中。
+
+### 并发原语
+
+Go 提供传统的并发原语，以便开发人员实现常规并发编程中不同场景下的同步访问。
+
+- sync.Mutex：互斥锁，用于保护共享资源的并发访问。
+- sync.RWMutex：读写锁，是sync.Mutex的升级版本，用于保护共享资源的并发读写访问（支持多读单写）。
+- sync.Map：并发安全的 Map，用于存储并发安全的键值对。
+- sync.Cond：允许一个或多个 Goroutine 在满足特定条件时进行等待，并在条件变量发生变化时通知等待的 Goroutine。
+    - [syncCond示例](tests/sync.cond_test.go)
+- sync.WaitGroup：它提供了一个计数器，可以在多个 Goroutine 之间进行增加和减少，主要用于等待一组 Goroutine 的执行完成。
+- sync.Once：用于确保某个函数或代码块在（并发）调用多次时也只执行一次。
+- atomic：用于在并发场景下进行原子操作。
+    - [atomic示例](tests/atomic_test.go)
+
+## 内置分析工具
+
+### -gcflags
+
+主要是 `go build`提供的`-gcflags`选项用于设置编译参数。支持的参数有：
+
+- `-N` 选项指示禁止优化
+- `-l` 选项指示禁止内联
+- `-S` 选项指示打印出汇编代码
+- `-m` 选项指示打印出变量变量逃逸信息，`-m -m`可以打印出更丰富的变量逃逸信息
+
+-gcflags支持只在编译特定包时候才传递编译参数，此时的`-gcflags`参数格式为`包名=参数`列表。如下：
+
+```shell
+go build -gcflags="log=-N -l" main.go // 只对log包进行禁止优化，禁止内联操作
+```
+
+### go-tool-compile
+
+go tool compile命令用于汇编处理Go 程序文件。
+
+```shell
+go tool compile -N -l -S main.go # 打印出main.go对应的汇编代码
+```
+
+### go-tool-nm
+
+go tool nm命令用来查看Go 二进制文件中符号表信息。
+
+```shell
+go tool nm ./main | grep "runtime.zerobase"
+```
+
+### go-tool-objdump
+
+`go tool objdump`命令用来根据目标文件或二进制文件反编译出汇编代码。该命令支持两个选项：
+
+- -S 选项指示打印汇编代码
+- -s 选项指示搜索相关的汇编代码
+
+```shell
+go tool compile -N -l main.go # 生成main.o
+go tool objdump main.o # 打印所有汇编代码
+go tool objdump -s "main.(main|add)" ./test # objdump支持搜索特定字符串
+```
+
+### go-tool-trace
+
+用于性能分析和跟踪的工具，它可以用来分析程序的执行时间、Goroutine 的调度情况、阻塞情况等。
+参考[掘金文章](https://juejin.cn/post/6844903887757901831)。
 
 ## 使用 Delve 调试
+
+Delve 是使用Go语言实现的，专门用来调试Go程序的工具。
+
+安装：
+
+```shell
+# 安装最新版本
+go get -u github.com/go-delve/delve/cmd/dlv
+# 查看版本
+dlv version
+```
+
+开始调试，dlv 使用 debug 命令进入调试界面：
+
+```shell
+# 如果当前目录是 main 文件所在目录，可省略最后的main.go参数
+dlv debug main.go
+
+# 或者调试二进制文件，编译时最好设置选项 -gcflags="-N -l" 关闭优化，否则可能断点失败
+dlv exec ./main
+
+#对于需要命令行参数才能启动的程序，我们可以通过--来传递命令行参数
+dlv debug github.com/me/foo/cmd/foo -- -arg1 value
+dlv exec /mypath/binary -- --config=config.toml
+
+# 对于已经运行的程序，可以使用 attach 命令，进行跟踪调试指定 pid 的Go应用：
+dlv attach $PID
+
+# 调试test文件
+dlv test github.com/me/foo/pkg/baz -- -run=xxx
+```
+
+进入 dlv 调试后，可以输入 help 查看帮助信息：
+```shell
+(dlv) help
+The following commands are available:
+
+Running the program:
+    call ------------------------ 继续进程，注入函数调用（实验！！！）
+    continue (alias: c) --------- 运行直到断点或程序终止。
+    next (alias: n) ------------- 运行至下一行。
+    rebuild --------------------- 重新生成可执行文件，若可执行文件不是delve生成的，则不能使用。
+    restart (alias: r) ---------- 重新启动进程。
+    step (alias: s) ------------- 单步执行程序。
+    step-instruction (alias: si)  单步执行单个cpu指令。
+    stepout (alias: so) --------- 跳出当前函数。
+
+Manipulating breakpoints:
+    break (alias: b) ------- 设置断点。
+    breakpoints (alias: bp)  查看所有断点信息。
+    clear ------------------ 删除断点。
+    clearall --------------- 删除多个断点。
+    condition (alias: cond)  设置断点条件。
+    on --------------------- 命中断点时执行命令。
+    toggle ----------------- 打开或关闭断点。
+    trace (alias: t) ------- 设置跟踪点。
+    watch ------------------ 设置观察点。
+
+Viewing program variables and memory:
+    args ----------------- 打印函数参数。
+    display -------------- 每次程序停止时打印表达式的值。
+    examinemem (alias: x)  检查给定地址的原始内存。
+    locals --------------- 打印局部变量。
+    print (alias: p) ----- 对表达式求值。
+    regs ----------------- 打印CPU寄存器的内容。
+    set ------------------ 更改变量的值。
+    vars ----------------- 打印包变量。
+    whatis --------------- 打印表达式的类型。
+
+Listing and switching between threads and goroutines:
+    goroutine (alias: gr) -- 显示或更改当前goroutine。
+    goroutines (alias: grs)  列出程序所有goroutine。
+    thread (alias: tr) ----- 切换到指定的线程。
+    threads ---------------- 打印每个跟踪线程的信息。
+
+Viewing the call stack and selecting frames:
+    deferred --------- 在延迟调用的上下文中执行命令。
+    down ------------- 向下移动当前帧。
+    frame ------------ 设置当前帧，或在其他帧上执行命令。
+    stack (alias: bt)  打印堆栈跟踪。
+    up --------------- 向上移动当前帧。
+
+Other commands:
+    config --------------------- 更改配置参数。
+    disassemble (alias: disass)  反汇编程序。
+    dump ----------------------- 从当前进程状态创建核心转储
+    edit (alias: ed) ----------- 自己指定编辑器编辑，读的环境变量 $DELVE_EDITOR 或者 $EDITOR
+    exit (alias: quit | q) ----- 退出调试器。
+    funcs ---------------------- 打印函数列表。
+    help (alias: h) ------------ 打印帮助消息。
+    libraries ------------------ 列出加载的动态库
+    list (alias: ls | l) ------- 显示源代码。
+    source --------------------- 执行包含 delve 命令的文件
+    sources -------------------- 打印源文件列表。
+    transcript ----------------- 将命令输出追加到文件。
+    types ---------------------- 打印类型列表
+
+Type help followed by a command for full documentation.
+```
