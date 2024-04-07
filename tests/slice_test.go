@@ -34,3 +34,21 @@ func TestSliceGrowing(t *testing.T) {
 	s2[0] = 22
 	println(s1[1] == 22) // false
 }
+
+func TestIterateSlice(t *testing.T) {
+	type User struct {
+		Name string
+	}
+
+	var ss = []User{
+		{"a"},
+		{"b"},
+		{"c"},
+	}
+
+	for _, v := range ss {
+		v.Name = "new"
+	}
+
+	println(ss[0].Name == "new") // false
+}

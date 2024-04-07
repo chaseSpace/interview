@@ -290,6 +290,18 @@ func TestSliceShareArr(t *testing.T) {
 > [!Warning]
 > 不要依赖这种共享数组的行为，因为切片扩容时会分配新的底层数组。
 
+### 遍历切片要注意什么
+
+遍历切片有两种方式：
+
+- 直接遍历元素：`for k,v := range slice {}`
+- 遍历索引：`for k := range slice {}`
+
+第一种方式更常用，但它的问题是会对切片元素进行拷贝，所以修改切片元素不会影响原切片。
+参考示例 [TestIterateSlice][TestIterateSlice]。
+
+[TestIterateSlice]: https://github.com/chaseSpace/interview/blob/4ddf592fa7d3c78887d47f0edeaa57d8d7084113/tests/slice_test.go#L38
+
 ## 字符串
 
 ### rune
@@ -533,6 +545,7 @@ dlv test github.com/me/foo/pkg/baz -- -run=xxx
 ```
 
 进入 dlv 调试后，可以输入 help 查看帮助信息：
+
 ```shell
 (dlv) help
 The following commands are available:
