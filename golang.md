@@ -257,6 +257,21 @@ $ go run main.go
 
 在这个修复版本中，`fmt.Println`函数将作为匿名函数的参数，那么函数在作为参数时，实际传的是函数指针。
 
+### 什么是内联函数
+
+内联函数（inline function）是一种编译器优化技术，通常用于告诉编译器在编译时将函数调用直接替换为函数体，而不是像普通函数一样生成一个调用。
+这种替换可以减少函数调用的开销，提高程序的执行效率。通常在函数比较小且频繁调用的情况下会自动进行内联优化
+
+> [!NOTE]
+> 调用一个函数时的开销主要在于函数栈空间的开辟和回收。
+
+不需要内联的情况：
+
+- 有时候，为了分析代码行为，我们希望函数调用时能够看到函数的调用栈，此时不能进行内联优化。
+- 对于调用位置较多的函数，内敛会增加二进制大小。
+
+Go 支持在函数上添加 `//go:noinline` 注释告诉编译不要对它进行内联优化。
+
 ## 基本数据类型
 
 ### 数组的缺点
@@ -300,7 +315,35 @@ func TestSliceShareArr(t *testing.T) {
 第一种方式更常用，但它的问题是会对切片元素进行拷贝，所以修改切片元素不会影响原切片。
 参考示例 [TestIterateSlice][TestIterateSlice]。
 
-[TestIterateSlice]: https://github.com/chaseSpace/interview/blob/4ddf592fa7d3c78887d47f0edeaa57d8d7084113/tests/slice_test.go#L38
+[TestIterateSlice]: https://github.com/chaseSpace/interview/blob/849b05cc1298042d4c889fc358a220b0b3f58f89/tests/slice_test.go#L38
+
+### new和make的区别
+
+- new用于创建一个指定类型的零值，并返回指向该类型零值的指针，包括容器类型。
+- make 用于创建一些特定类型的数据结构，例如切片、映射和通道，返回的是值本身。
+
+### map中的key符合什么要求
+
+必须是可以比较的。不能直接比较的：切片类型、map类型、函数型func。
+
+### 什么是 no copy 机制
+
+有些结构体内含指针类型的成员，定义来就是不希望被复制的。因为当该对象被拷贝时，会使得两个对象中的指针字段变得不再安全。
+所以为了安全性需要提供保护机制防止对象复制。
+
+Go语言中提供了两种 copy 机制，一种是在运行时检查，一种是静态检查。Go官方目前只提供了`strings.Builder`和`sync.Cond`
+的runtime拷贝检查机制，对于其他需要nocopy对象类型来说，使用go vet工具来做静态编译检查。
+
+具体的用法就是在结构体内嵌入`noCopy`字段，参考 [nocopy示例](tests/nocopy_test.go) 。
+
+### chan 在什么时候触发 panic
+
+- 重复关闭channel
+- 往已经关闭的channel发送数据
+- 关闭 nil channel
+
+> [!NOTE]
+> 可以读取一个nil channel，不过这会永久阻塞。如果（除了nil-chan所在的goroutine）没有其他正在运行的goroutine，那么程序会因为死锁而崩溃。
 
 ## 字符串
 
