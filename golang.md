@@ -335,6 +335,13 @@ func TestSliceShareArr(t *testing.T) {
 
 [TestIterateSlice]: https://github.com/chaseSpace/interview/blob/849b05cc1298042d4c889fc358a220b0b3f58f89/tests/slice_test.go#L38
 
+### nil切片与空切片的区别
+
+- nil切片的内存地址是0，空切片则是一个非0地址
+- nil切片不可以作为copy参数的`dst`参数（语法正确，但无法填入数据）
+    - 因为copy不负责对`dst`进行扩容
+    - nil切片可以append
+
 ### new 和 make 的区别
 
 - new 用于创建一个指定类型的零值，并返回指向该类型零值的指针，包括容器类型。
@@ -361,10 +368,11 @@ Go 语言中提供了两种 copy 机制，一种是在运行时检查，一种�
 - 关闭 nil channel
 
 > [!NOTE]
-可以读取一个 nil channel，不过这会永久阻塞。如果（除了 nil-chan 所在的 goroutine）没有其他正在运行的 goroutine，那么程序会因为死锁而崩溃。
+> 可以读取一个 nil channel，不过这会永久阻塞。如果（除了 nil-chan 所在的 goroutine）没有其他正在运行的
+> goroutine，那么程序会因为死锁而崩溃。
 
 > [!NOTE]
-可以读取一个关闭的 channel，会直接读出剩余所有数据。若无数据，则无阻塞直接返回。
+> 可以读取一个关闭的 channel，会直接读出剩余所有数据。若无数据，则无阻塞直接返回。
 
 ## 字符串
 
