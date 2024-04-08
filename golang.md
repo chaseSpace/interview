@@ -272,6 +272,24 @@ $ go run main.go
 
 Go 支持在函数上添加 `//go:noinline` 注释告诉编译不要对它进行内联优化。
 
+### 什么是内存逃逸
+
+是指在编译器无法确定一个变量的生命周期时，会将其分配在堆上而不是栈上。
+变量的生命周期指的是变量在程序运行期间的有效范围，包括了变量被声明后到被释放前的整个时间段。
+
+一般来说，一个函数内的变量在函数内声明时，会分配在栈上，如果函数返回时，栈上变量会被回收。但是发生以下情况时，
+变量会被分配在堆上。
+
+- 返回指针：函数返回了一个局部变量的指针。
+- 闭包引用：闭包函数引用了外部函数的局部变量。
+- 发送指针或带有指针的值到 channel 中。
+- 在一个切片上存储指针或带指针的值。
+- 对局部变量使用反射：例如`reflect.ValueOf(v)`或`reflect.TypeOf(v)`。
+    - `fmt.Print*` 系列函数内部都使用了反射。
+
+> [!NOTE]
+> 使用`go build -gcflags -m`可对代码进行逃逸分析。
+
 ## 基本数据类型
 
 ### 数组的缺点
@@ -317,33 +335,36 @@ func TestSliceShareArr(t *testing.T) {
 
 [TestIterateSlice]: https://github.com/chaseSpace/interview/blob/849b05cc1298042d4c889fc358a220b0b3f58f89/tests/slice_test.go#L38
 
-### new和make的区别
+### new 和 make 的区别
 
-- new用于创建一个指定类型的零值，并返回指向该类型零值的指针，包括容器类型。
+- new 用于创建一个指定类型的零值，并返回指向该类型零值的指针，包括容器类型。
 - make 用于创建一些特定类型的数据结构，例如切片、映射和通道，返回的是值本身。
 
-### map中的key符合什么要求
+### map 中的 key 符合什么要求
 
-必须是可以比较的。不能直接比较的：切片类型、map类型、函数型func。
+必须是可以比较的。不能直接比较的：切片类型、map 类型、函数型 func。
 
 ### 什么是 no copy 机制
 
 有些结构体内含指针类型的成员，定义来就是不希望被复制的。因为当该对象被拷贝时，会使得两个对象中的指针字段变得不再安全。
 所以为了安全性需要提供保护机制防止对象复制。
 
-Go语言中提供了两种 copy 机制，一种是在运行时检查，一种是静态检查。Go官方目前只提供了`strings.Builder`和`sync.Cond`
-的runtime拷贝检查机制，对于其他需要nocopy对象类型来说，使用go vet工具来做静态编译检查。
+Go 语言中提供了两种 copy 机制，一种是在运行时检查，一种是静态检查。Go 官方目前只提供了`strings.Builder`和`sync.Cond`
+的 runtime 拷贝检查机制，对于其他需要 nocopy 对象类型来说，使用 go vet 工具来做静态编译检查。
 
-具体的用法就是在结构体内嵌入`noCopy`字段，参考 [nocopy示例](tests/nocopy_test.go) 。
+具体的用法就是在结构体内嵌入`noCopy`字段，参考 [nocopy 示例](tests/nocopy_test.go) 。
 
 ### chan 在什么时候触发 panic
 
-- 重复关闭channel
-- 往已经关闭的channel发送数据
+- 重复关闭 channel
+- 往已经关闭的 channel 发送数据
 - 关闭 nil channel
 
 > [!NOTE]
-> 可以读取一个nil channel，不过这会永久阻塞。如果（除了nil-chan所在的goroutine）没有其他正在运行的goroutine，那么程序会因为死锁而崩溃。
+可以读取一个 nil channel，不过这会永久阻塞。如果（除了 nil-chan 所在的 goroutine）没有其他正在运行的 goroutine，那么程序会因为死锁而崩溃。
+
+> [!NOTE]
+可以读取一个关闭的 channel，会直接读出剩余所有数据。若无数据，则无阻塞直接返回。
 
 ## 字符串
 
@@ -402,7 +423,19 @@ func TestTrimSpace(t *testing.T) {
 
 ### Go 调度器
 
-Go 调度器是 Go 语言运行时的一个核心组件，负责管理协程的调度和执行。
+Go 调度器是 Go 语言运行时的一个核心组件，负责管理协程的生命周期以及操作系统线程的创建和分配，还有 CPU 时间片的分配。
+协程是 Go 的并发单元，实现它是为了替换掉操作系统的线程模型。Go 调度为协程实现了一种轻量化的自动伸缩栈，其初始大小为
+2KB，远小于线程的 2MB，并根据需要调整大小。
+
+Go 调度器的原理大致是将用户创建的协程分配到具体的线程上执行， 其中线程需要绑定一个 CPU 核心。
+并在协程发生阻塞时迫使其让出 CPU 控制权给其他协程，阻塞协程将被重新放入队列中等待调度。其次当线程不够用时，
+调度器还负责向操作系统申请新的线程使用。
+
+Go 调度器的线程模型是 M:N，指的是 M 个协程运行在 N 个线程上。由于协程栈足够小，所以 M:N的比例可能非常大，
+所以 Go 能轻松实现百万级并发。
+
+协程在阻塞时会让出 CPU 控制权进入挂起状态，所以非常适用于 IO 密集型应用，比如 Web 服务器/数据库应用/内容服务器等。
+但相应地，针对于 CPU 密集型应用，则采用其他非 GC 类语言更合适，例如 C/C++/Rust 等。
 
 ### GPM 模型
 
@@ -411,12 +444,12 @@ GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型
 
 - **Goroutine**：Go 语言中的协程，是 Go 语言并发编程的基本单元，一个协程的初始栈大小为 2KB（远小于线程的 2MB）。
 - **Processor**：逻辑上的 CPU 核心，调度实体，负责将 Goroutine 分配给可用的 Machine 执行。
-    - 每个 P 维护一个本地G队列，调度器维护一个全局G队列，都用于保存等待执行的 Goroutine。
+    - 每个 P 维护一个本地 G 队列，调度器维护一个全局 G 队列，都用于保存等待执行的 Goroutine。
     - 当某个 P 的本地队列为空时，会尝试从其他 P 的队列中获取 G 执行，这叫做工作窃取（work-stealing）。
-    - 每个P会定期从全局队列中窃取G来执行，避免其中的G被饿死。
+    - 每个 P 会定期从全局队列中窃取 G 来执行，避免其中的 G 被饿死。
     - （最开始没有本地队列，它的引入是一种分段锁的思想）
 - **Machine**：代表操作系统层面的线程，是真正执行 Goroutine 的实体。
-    - 当 Goroutine 进行系统调用或channel/IO阻塞操作时，它会被 P 挂起，然后调度下一个 G 执行。
+    - 当 Goroutine 进行系统调用或 channel/IO 阻塞操作时，它会被 P 挂起，然后调度下一个 G 执行。
     - 当挂起的 G 被唤醒（通常是阻塞结束）时，M 会重新分配给 P，然后继续执行。
 
 简单来说，P 调度 M 来执行 G。
@@ -466,9 +499,9 @@ GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型
 ### CSP 并发模型
 
 CSP（Communicating Sequential Process）并发模型，最初由计算机科学家 Tony Hoare 在 1978 年提出。CSP
-模型的核心概念是通过通信来协调并发执行的进程或线程，而不是共享内存。CSP 是Go的并发哲学。
+模型的核心概念是通过通信来协调并发执行的进程或线程，而不是共享内存。CSP 是 Go 的并发哲学。
 
-通俗来说，CSP鼓励在线程（或协程）通过消息传递来实现同步访问，而不是通过锁机制。CSP 模型的优点如下：
+通俗来说，CSP 鼓励在线程（或协程）通过消息传递来实现同步访问，而不是通过锁机制。CSP 模型的优点如下：
 
 - **简化并发编程**：CSP 模型通过 channel 来进行 Goroutine 之间的通信，避免了复杂的锁操作和同步机制，使得并发编程更加简单直观。
 - **提高可读性和可维护性**：CSP 模型的代码通常更加清晰，因为它强调的是数据流和通信，而不是状态的同步和互斥。
@@ -480,28 +513,66 @@ CSP（Communicating Sequential Process）并发模型，最初由计算机科学
 
 Go 使用`-race`选项来检测并发程序中的竞态条件。
 
-```
+```plain
 go test -race mypkg
 go run -race mysrc.go
 go build -race mycmd
 go install -race mypkg
 ```
 
-当存在竞态条件时，Go 会在标准错误中输出警告信息，这个参数通常会用在测试和CI脚本中。
+当存在竞态条件时，Go 会在标准错误中输出警告信息，这个参数通常会用在测试和 CI 脚本中。
 
 ### 并发原语
 
 Go 提供传统的并发原语，以便开发人员实现常规并发编程中不同场景下的同步访问。
 
 - sync.Mutex：互斥锁，用于保护共享资源的并发访问。
-- sync.RWMutex：读写锁，是sync.Mutex的升级版本，用于保护共享资源的并发读写访问（支持多读单写）。
+- sync.RWMutex：读写锁，是 sync.Mutex 的升级版本，用于保护共享资源的并发读写访问（支持多读单写）。
 - sync.Map：并发安全的 Map，用于存储并发安全的键值对。
 - sync.Cond：允许一个或多个 Goroutine 在满足特定条件时进行等待，并在条件变量发生变化时通知等待的 Goroutine。
-    - [syncCond示例](tests/sync.cond_test.go)
+    - [syncCond 示例](tests/sync.cond_test.go)
 - sync.WaitGroup：它提供了一个计数器，可以在多个 Goroutine 之间进行增加和减少，主要用于等待一组 Goroutine 的执行完成。
 - sync.Once：用于确保某个函数或代码块在（并发）调用多次时也只执行一次。
 - atomic：用于在并发场景下进行原子操作。
-    - [atomic示例](tests/atomic_test.go)
+    - [atomic 示例](tests/atomic_test.go)
+
+### 内存泄漏
+
+内存泄漏（memory leak）指的是程序中已经不再需要的内存却没有被正确释放的情况。在 Go 中主要指的是 Goroutine 在用完后没有及时退出的情况。
+
+#### 如何避免
+
+主要是指那些包含退出条件的 goroutine（一般是等待 channel），确保经过充分的测试。
+此外，对于那些执行耗时任务的 goroutine，应该接收`context.Context`参数来允许外部控制 goroutine 的退出。
+
+#### http 包的内存泄漏
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"runtime"
+)
+
+func main() {
+	num := 6
+	for index := 0; index < num; index++ {
+		resp, _ := http.Get("https://www.baidu.com")
+		_, _ = ioutil.ReadAll(resp.Body)
+	}
+	fmt.Printf("此时goroutine个数= %d\n", runtime.NumGoroutine())
+}
+```
+
+请问这段代码中打印的 goroutine 个数是？
+
+**答案**：3
+
+**分析**：由于每次 Get 后都没有调用 resp.Body.Close()，导致 http 包内部的`readLoop()`和`writeLoop()`函数没有及时释放。
+但是，由于是访问同一个域名，所以连接会被复用，即使循环 6 次，最终 http 包也只泄漏了 2 个 goroutine，剩余的一个则是 Main 函数。
 
 ## 内置分析工具
 
@@ -514,7 +585,7 @@ Go 提供传统的并发原语，以便开发人员实现常规并发编程中�
 - `-S` 选项指示打印出汇编代码
 - `-m` 选项指示打印出变量变量逃逸信息，`-m -m`可以打印出更丰富的变量逃逸信息
 
--gcflags支持只在编译特定包时候才传递编译参数，此时的`-gcflags`参数格式为`包名=参数`列表。如下：
+-gcflags 支持只在编译特定包时候才传递编译参数，此时的`-gcflags`参数格式为`包名=参数`列表。如下：
 
 ```shell
 go build -gcflags="log=-N -l" main.go // 只对log包进行禁止优化，禁止内联操作
@@ -522,7 +593,7 @@ go build -gcflags="log=-N -l" main.go // 只对log包进行禁止优化，禁止
 
 ### go-tool-compile
 
-go tool compile命令用于汇编处理Go 程序文件。
+go tool compile 命令用于汇编处理 Go 程序文件。
 
 ```shell
 go tool compile -N -l -S main.go # 打印出main.go对应的汇编代码
@@ -530,7 +601,7 @@ go tool compile -N -l -S main.go # 打印出main.go对应的汇编代码
 
 ### go-tool-nm
 
-go tool nm命令用来查看Go 二进制文件中符号表信息。
+go tool nm 命令用来查看 Go 二进制文件中符号表信息。
 
 ```shell
 go tool nm ./main | grep "runtime.zerobase"
@@ -556,7 +627,7 @@ go tool objdump -s "main.(main|add)" ./test # objdump支持搜索特定字符串
 
 ## 使用 Delve 调试
 
-Delve 是使用Go语言实现的，专门用来调试Go程序的工具。
+Delve 是使用 Go 语言实现的，专门用来调试 Go 程序的工具。
 
 安装：
 

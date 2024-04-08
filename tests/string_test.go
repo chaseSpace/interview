@@ -1,9 +1,9 @@
-package tests
+package main
 
 import (
 	"fmt"
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestNewLiteral(t *testing.T) {
@@ -28,7 +28,7 @@ func TestRune(t *testing.T) {
 	println(len("a菜"), len([]rune("a菜"))) // 4  2
 }
 
-func TestTrim(t *testing.T)  {
+func TestTrim(t *testing.T) {
 	var s = strings.Trim("-Hell-o-", "-")
 	fmt.Println(s, len(s)) // Hell-o 6
 

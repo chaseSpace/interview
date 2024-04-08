@@ -1,6 +1,8 @@
-package tests
+package main
 
-import "testing"
+import (
+	"testing"
+)
 
 // 创建切片的3种方式
 func TestNewSlice(t *testing.T) {
@@ -51,4 +53,16 @@ func TestIterateSlice(t *testing.T) {
 	}
 
 	println(ss[0].Name == "new") // false
+}
+
+// 切片可以通过下标修改非指针结构体元素的成员字段
+func TestUpdateElemByIndex(t *testing.T) {
+	type User struct {
+		Name string
+	}
+
+	var ss = []User{{"a"}}
+	ss[0].Name = "new"
+
+	println(ss[0].Name == "new") // true
 }
