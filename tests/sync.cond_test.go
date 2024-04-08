@@ -36,7 +36,7 @@ var produceDone bool
 var consumers = 3
 
 func producer() {
-	fmt.Println("生产中。。。")
+	t.Log("生产中。。。")
 	time.Sleep(time.Second)
 
 	// 生产完成，通知消费者

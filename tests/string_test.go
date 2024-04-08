@@ -30,24 +30,24 @@ func TestRune(t *testing.T) {
 
 func TestTrim(t *testing.T) {
 	var s = strings.Trim("-Hell-o-", "-")
-	fmt.Println(s, len(s)) // Hell-o 6
+	t.Log(s, len(s)) // Hell-o 6
 
 	s = strings.Trim("-Love-o-", "-o")
-	fmt.Println(s, len(s)) // Love 4
+	t.Log(s, len(s)) // Love 4
 }
 
 func TestTrimLeft(t *testing.T) {
 	var s = strings.TrimLeft("-Hell-o-", "-o")
-	fmt.Println(s, len(s)) // Hell-o- 7
+	t.Log(s, len(s)) // Hell-o- 7
 }
 
 func TestTrimRight(t *testing.T) {
 	var s = strings.TrimRight("-Hell-o-", "-o")
-	fmt.Println(s, len(s)) // -Hell 5
+	t.Log(s, len(s)) // -Hell 5
 }
 
 func TestTrimSpace(t *testing.T) {
 	// 清除两侧的空白符
 	var s = strings.TrimSpace(" - -\t\n\v\f\r ")
-	fmt.Println(s, len(s)) // - -  3
+	t.Log(s, len(s)) // - -  3
 }
