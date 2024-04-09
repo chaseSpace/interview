@@ -1,5 +1,7 @@
 # Kafka 相关
 
+本文内容摘自网络，请读者自行确认内容严谨性。
+
 ## 简述 kafka
 
 kafka 是一个基于发布订阅模式的消息队列中间件，分为 producer 和 consumer，通过 topic 进行消息分
