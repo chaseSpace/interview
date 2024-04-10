@@ -20,10 +20,10 @@ func TestSyncCond(t *testing.T) {
 
 	// 多个消费者启动后将会进入阻塞，等待上游通知
 	for i := 0; i < consumers; i++ {
-		go consumer(fmt.Sprintf("r%d", i))
+		go consumer(t, fmt.Sprintf("r%d", i))
 	}
 
-	producer()
+	producer(t)
 	time.Sleep(time.Second)
 
 }
@@ -35,7 +35,7 @@ var c = sync.NewCond(&sync.Mutex{})
 var produceDone bool
 var consumers = 3
 
-func producer() {
+func producer(t *testing.T) {
 	t.Log("生产中。。。")
 	time.Sleep(time.Second)
 
@@ -46,7 +46,7 @@ func producer() {
 	c.Broadcast()
 }
 
-func consumer(reader string) {
+func consumer(t *testing.T, reader string) {
 	c.L.Lock()
 
 	// 重点解释
@@ -56,6 +56,6 @@ func consumer(reader string) {
 		c.Wait() // Wait结束时，还会判断一次条件，在条件为假时向下执行
 	}
 
-	fmt.Printf("%s消费中。。。\n", reader)
+	t.Logf("%s消费中。。。\n", reader)
 	c.L.Unlock()
 }
