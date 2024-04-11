@@ -70,30 +70,30 @@ func TestArray_Insert2(t *testing.T) {
 func TestArray_FindByIndex(t *testing.T) {
 	a := NewArray(3)
 	assert.Panics(t, func() {
-		a.FindByIndex(0)
+		a.Get(0)
 	}, "index out of range")
 
 	a.Insert(3)
-	assert.Equal(t, a.FindByIndex(0), 3)
+	assert.Equal(t, a.Get(0), 3)
 	a.Insert(2) // 2,3
-	assert.Equal(t, a.FindByIndex(0), 2)
-	assert.Equal(t, a.FindByIndex(1), 3)
+	assert.Equal(t, a.Get(0), 2)
+	assert.Equal(t, a.Get(1), 3)
 }
 
 func TestArray_DeleteByIndex(t *testing.T) {
 	a := NewArray(3)
 	assert.Panics(t, func() {
-		a.DeleteByIndex(0)
+		a.Remove(0)
 	}, "index out of range")
 
 	a.Insert(3)
-	a.DeleteByIndex(0)
+	a.Remove(0)
 	assert.Equal(t, 0, a.Len())
 
 	// 删除最后一个元素
 	a.Insert(3)
 	a.Insert(2)
-	a.DeleteByIndex(1)
+	a.Remove(1)
 	assert.Equal(t, a.Data(), []interface{}{2})
 	assert.Equal(t, 1, a.Len())
 
@@ -101,13 +101,13 @@ func TestArray_DeleteByIndex(t *testing.T) {
 	a.Insert(1)
 	a.Insert(0) // 0,1,2
 	assert.Equal(t, a.Data(), []interface{}{0, 1, 2})
-	a.DeleteByIndex(1)
+	a.Remove(1)
 	assert.Equal(t, a.Data(), []interface{}{0, 2})
 	assert.Equal(t, 2, a.Len())
 
 	// 删除第一个元素
 	// 0,2
-	a.DeleteByIndex(0)
+	a.Remove(0)
 	assert.Equal(t, a.Data(), []interface{}{2})
 	assert.Equal(t, 1, a.Len())
 }

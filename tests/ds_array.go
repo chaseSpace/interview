@@ -11,6 +11,8 @@ type Array struct {
 	len  int           // 只能自己维护数组元数据，不能调用切片的内置函数len()
 }
 
+var _ ListAPI = (*Array)(nil)
+
 func NewArray(capacity int) Array {
 	// 注意：这里必需初始化一个长度等于容量的切片，才能完全模拟内存中的连续地址
 	return Array{data: make([]interface{}, capacity)}
@@ -24,8 +26,8 @@ func (a *Array) Data() (data []interface{}) {
 	return
 }
 
-// FindByIndex O(1)
-func (a *Array) FindByIndex(idx int) interface{} {
+// Get O(1)
+func (a *Array) Get(idx int) interface{} {
 	if idx < 0 || idx >= a.len {
 		panic("index out of range")
 	}
@@ -64,8 +66,8 @@ func (a *Array) Insert(elem interface{}, idx ...int) {
 	}
 }
 
-// DeleteByIndex O(n)
-func (a *Array) DeleteByIndex(idx int) {
+// Remove O(n)
+func (a *Array) Remove(idx int) {
 	if idx < 0 || idx >= a.len {
 		panic("index out of range")
 	}
