@@ -8,3 +8,4 @@
 ---
 
 - [Go 基础篇](golang.md)
+- [Go 数据结构篇](golang_ds.md)
