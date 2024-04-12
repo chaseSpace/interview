@@ -4,7 +4,8 @@ package main
 // -- Go 中，NewProduct() 函数就是一个工厂类，好比 Java 中的构造函数。
 // -- 此模式是最简单的工厂模式。
 
-func exampleUsageX2D1() {
+func exampleSimpleFactory() {
+	println("exampleSimpleFactory")
 	api := NewProduct(1)
 	api.SomeMethod()
 

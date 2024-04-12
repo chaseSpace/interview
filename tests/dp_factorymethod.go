@@ -5,7 +5,8 @@ package main
 -- 即不同的产品由不同的工厂来创建。
 */
 
-func exampleUsage() {
+func exampleFactoryMethod() {
+	println("exampleFactoryMethod")
 	var creatorA ProductFactory = NewProductAFactory()
 	productA := creatorA.Create()
 	productA.GetPrice()
