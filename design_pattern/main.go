@@ -18,7 +18,7 @@ func runDesignPatternExample() {
 	exampleDecorator()
 	exampleProxy()
 	exampleFacade()
-	//exampleComposite()
+	exampleBridge()
+	exampleComposite()
 	//exampleFlyweight()
-	//exampleBridge()
 }
