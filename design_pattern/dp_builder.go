@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 func exampleBuilder() {
 	println("exampleBuilder")
 
@@ -35,7 +33,7 @@ type MacBookComputer struct {
 }
 
 func (m *MacBookComputer) PrintConfig() {
-	fmt.Printf("cpu:%s ram:%s\n", m.cpu, m.ram)
+	//fmt.Printf("cpu:%s ram:%s\n", m.cpu, m.ram)
 }
 
 // ----- 具体产品的 *Builder 实现
