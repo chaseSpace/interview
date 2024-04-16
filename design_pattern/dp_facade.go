@@ -8,6 +8,7 @@ func exampleFacade() {
 	// ...
 
 	// 调用外观类完成转换功能(当前上下文不关心转换细节，以后只需要修改外观类的实现，不会影响到当前上下文)
+	// 实际情况中，也可以只提供一个外观函数，而不需要定义一个接口（类）
 	convert := NewConvertDocAPI()
 	convert.Word2PDF("./src/wordX.docx", "./dst/pdfX.pdf")
 

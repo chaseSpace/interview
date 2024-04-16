@@ -20,5 +20,9 @@ func runDesignPatternExample() {
 	exampleFacade()
 	exampleBridge()
 	exampleComposite()
-	//exampleFlyweight()
+	exampleFlyweight()
+
+	// 11种行为型模式
+	exampleStrategy()
+	exampleTemplateMethod()
 }
