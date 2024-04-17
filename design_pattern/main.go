@@ -27,4 +27,6 @@ func runDesignPatternExample() {
 	exampleTemplateMethod()
 	exampleIterator()
 	exampleChainOfResponsibility()
+	exampleCommand()
+	exampleMemento()
 }
