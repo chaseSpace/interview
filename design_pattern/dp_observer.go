@@ -1,7 +1,7 @@
 package main
 
-func exampleObserverPattern() {
-	println("exampleObserverPattern")
+func exampleObserver() {
+	println("exampleObserver")
 	// 创建观察者WebGUI、AlertSystem
 	obs := []Observer{&WebGUI{}, &AlertSystem{}}
 
@@ -22,7 +22,7 @@ type WeatherServiceSubject interface {
 	Register(observer ...Observer) // 注册观察者
 	Remove(observer Observer)      // 注销观察者
 	Notify()                       // 通知所有注册的观察者
-	ChangeWeather(string2 string)  // 天气变化
+	ChangeWeather(weather string)  // 天气变化
 }
 
 // 观察者（接口）

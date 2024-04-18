@@ -25,8 +25,12 @@ func runDesignPatternExample() {
 	// 11种行为型模式
 	exampleStrategy()
 	exampleTemplateMethod()
+	exampleObserver()
 	exampleIterator()
 	exampleChainOfResponsibility()
 	exampleCommand()
 	exampleMemento()
+	exampleState()
+	exampleVisitor()
+	exampleMediator()
 }
