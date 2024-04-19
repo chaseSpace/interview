@@ -33,4 +33,5 @@ func runDesignPatternExample() {
 	exampleState()
 	exampleVisitor()
 	exampleMediator()
+	exampleInterpreter()
 }
