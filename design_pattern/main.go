@@ -34,4 +34,8 @@ func runDesignPatternExample() {
 	exampleVisitor()
 	exampleMediator()
 	exampleInterpreter()
+
+	// 其他模式
+	exampleNullObject()
+	exampleInterceptor()
 }
