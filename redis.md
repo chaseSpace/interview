@@ -191,7 +191,7 @@ BF.INFO {key}
 - 消息队列：使用List和Stream实现简易队列。（不支持事务，仅适合用于存储非关键业务数据）
 - 延迟队列：使用ZSet+List实现延迟队列。
 - 分布式锁：使用`SETNX`命令实现。
-- 分布式Session：使用String存储Session。
+- Session：使用String存储Session。
 - 排行榜：使用ZSet实现。
 - 附近的人：使用GeoHash+ZSet实现。
 - 共同好友：使用Set结构的`SINTER`命令查询共同好友。
@@ -421,7 +421,10 @@ XADD bossStream * name bigold age 40
 其他命令：
 
 ```shell
-XTRIM key MAXLEN [~] count  # 对流进行修剪，限制长度
+# 对流进行修剪，限制长度
+# -- 例如XTRIM keyX MAXLEN ~ 100 表示保留最新的100条消息。~表示保留的消息数>=100即可，不用精确
+XTRIM key MAXLEN [~] count 
+
 XDEL key ID [ID ...]  # 删除流中的消息
 XLEN key # 获取流包含的元素数量，即消息长度
 XRANGE key start end [COUNT count] # 获取消息列表，会过滤已经删除的消息
@@ -473,3 +476,19 @@ PUBLISH channel message
 PSUBSCRIBE pattern [pattern ...]
 PUNSUBSCRIBE [pattern [pattern ...]]
 ```
+
+### 延迟队列
+
+TODO
+
+### 分布式锁
+
+### Session存储
+
+### 排行榜
+
+### 附近的人
+
+### 共同好友
+
+### 计数器
