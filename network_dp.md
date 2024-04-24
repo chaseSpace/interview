@@ -1,4 +1,4 @@
-# 高性能服务器中的设计模式 Reactor/Proactor
+# 高性能服务器中的I/O设计模式 Reactor/Proactor
 
 在设计高性能服务器的请求处理模型时，通常会使用 Reactor 和 Proactor 两种设计模式。
 
