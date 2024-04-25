@@ -1,9 +1,18 @@
 # 后端面试资料参考
 
+<div align="center">
+<img src="img/codeitnow.jpg" width="600" height="305">
+</div>
+
 说明：本项目涉及的主题逐渐增多和复杂，更新速度较慢，但尽可能保持周更频率，请持续关注。对于失误之处，敬请指正。如果你有好的主题或建议，也欢迎通过
 issue 告知。
 
 **此项目的立意是透明一切面试难点，即 No Secret, No Difficulties**。
+
+PLAN：
+
+- 最新完成：[高性能服务器的I/O设计模式：Reactor/Proactor](io_dp.md) ，欢迎阅读。
+- 下篇更新：Redis 系列。
 
 ## 索引
 
@@ -11,20 +20,20 @@ issue 告知。
 - [HTTP 系列](protocol_http.md)
 - [Websocket 系列](protocol_ws.md)
 - [Kafka 系列](kafka.md)
-- [Redis 系列（更新ing）](db_redis.md)
-- [MySQL 系列（更新ing）](db_mysql.md)
+- [Redis 系列（70%）](db_redis.md)
+- [MySQL 系列（25%）](db_mysql.md)
 
 ---
 
 - [Go 基础篇](golang.md)
-- [Go 数据结构篇（TODO）](golang_ds.md)
+- [Go 数据结构篇（30%）](golang_ds.md)
 - [Go 设计原则篇](golang_dp_principle.md)
 - [Go 设计模式篇](golang_designpattern.md)
 
 ---
 
 - [Linux 基础篇（TODO）](linux_basic.md)
-- [高性能服务器的I/O设计模式：Reactor/Proactor（更新ing）](network_dp.md)
+- [高性能服务器的I/O设计模式：Reactor/Proactor](io_dp.md)
 
 ---
 
