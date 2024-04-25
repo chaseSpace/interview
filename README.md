@@ -1,4 +1,11 @@
-# 面试资料参考
+# 后端面试资料参考
+
+说明：本项目涉及的主题逐渐增多和复杂，更新速度较慢，但尽可能保持周更频率，请持续关注。对于失误之处，敬请指正。如果你有好的主题或建议，也欢迎通过
+issue 告知。
+
+**此项目的立意是透明一切面试难点，即 No Secret, No Difficulties**。
+
+## 索引
 
 - [TCP/UDP 系列](protocol_tcp%26udp.md)
 - [HTTP 系列](protocol_http.md)
@@ -42,13 +49,27 @@
 --- 
 
 - [如何优化一个慢接口（TODO）](system_design/optimize_a_slow_api.md)
+- [如何优化数据库架构（TODO）](system_design/optimize_database_architecture.md)
 - [如何为亿级数据设计存储并保证查询效率（TODO）](system_design/how_to_storage_yiji_data.md)
 
 ---
 
-- [请解释一下微服务架构，它的优势和劣势是什么（TODO）](system_design/descripe_microservice.md)
+- [如何理解微服务架构，它的优势和劣势是什么（TODO）](system_design/descripe_microservice.md)
 - [如何理解缓存有哪些缓存方案（TODO）](system_design/understanding_cache.md)
-- [如何去发现系统中的性能瓶颈（TODO）](system_design/how_to_find_performance_bottleneck.md)
+- [如何发现系统中的性能瓶颈（TODO）](system_design/how_to_find_performance_bottleneck.md)
 - [如何理解消息队列，用在哪些场景（TODO）](system_design/understanding_message_queue.md)
 
+## 关于作者
+
+- 昵称：Leigg
+- 技术栈：主Go，副Python/Rust；K8s/Istio
+- 编程年限：7年+
+- Github：https://github.com/chaseSpace
+- 主要作品：[区块链入门][2]，[Kubernetes 中文教程][1]
+- 联系方式：random2035艾特qq.com
+
 [0]: https://www.zhihu.com/question/26312148/answer/1982172738
+
+[1]: https://github.com/chaseSpace/k8s-tutorial-cn
+
+[2]: https://github.com/chaseSpace/learn_blockchain
