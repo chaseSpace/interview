@@ -38,6 +38,7 @@ PLAN：
 ---
 
 - [幂等有几种实现方式](impl_idempotent.md)
+- [软件系统中有哪些类型的锁（TODO）](impl_lock.md)
 - [分布式锁有几种方式（TODO）](impl_dist_lock.md)
 
 <div>
