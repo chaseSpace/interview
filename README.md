@@ -11,7 +11,7 @@ issue 告知。
 
 PLAN：
 
-- 最新完成：[高性能服务器的I/O设计模式：Reactor/Proactor](io_dp.md) ，欢迎阅读。
+- 最新完成（2024-4-26）：[幂等有几种实现方式](impl_idempotent.md) ，欢迎阅读。
 - 下篇更新：Redis 系列。
 
 ## 索引
@@ -36,6 +36,9 @@ PLAN：
 - [高性能服务器的I/O设计模式：Reactor/Proactor](io_dp.md)
 
 ---
+
+- [幂等有几种实现方式](impl_idempotent.md)
+- [分布式锁有几种方式（TODO）](impl_dist_lock.md)
 
 <div>
 <img src="img/arch.jpg" width="320" height="100">
