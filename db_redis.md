@@ -563,6 +563,27 @@ channel，
 
 ### 分布式锁
 
+分布式锁是一种在分布式系统中用于协调多个进程（中的线程）对共享资源访问的同步机制。它确保在同一时间内只有一个进程（中的线程）可以执行某个操作或访问某个资源，
+从而避免并发访问导致的数据不一致问题。
+
+**实现方式**
+
+- 基于数据库的唯一索引：通过插入带有唯一索引的数据来实现锁的功能。
+- 基于 Redis：使用`SETNX`命令实现，**最常使用**。
+  - 设置的值通常是一个线程本地的唯一标识符，在删除时需要通过 Lua 脚本做到防误删。
+  - Redis 官方推荐的 Go 分布式锁实现：[Redsync](https://github.com/go-redsync/redsync)，支持防死锁、防误删。
+- 基于 ZooKeeper：通过创建一个临时节点来实现。
+- 基于 etcd 实现：通过 Key 的 Revision 属性和租约机制来实现，Watch 机制帮助客户端重试。
+  - Go 客户端提供锁实现。
+- 基于 Consul 实现：使用 Key 的 Acquire 和 Release 接口来实现。
+  - Go 客户端提供锁实现。
+
+**参考**
+
+- [Zookeeper 分布式锁实现原理](https://www.runoob.com/w3cnote/zookeeper-locks.html)
+- [etcd 分布式锁的实现原理](https://juejin.cn/post/7062900835038003208)
+- [consul 实现分布式锁](https://www.cnblogs.com/jiujuan/p/10527786.html)
+
 ### Session 存储
 
 ### 排行榜
