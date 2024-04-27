@@ -4,15 +4,15 @@
 <img src="img/codeitnow.jpg" width="600" height="305">
 </div>
 
+**此项目的立意是透明一切面试难点，即 No Secret, No Difficulties**。
+
 说明：本项目涉及的主题逐渐增多和复杂，更新速度较慢，但尽可能保持周更频率，请持续关注。对于失误之处，敬请指正。如果你有好的主题或建议，也欢迎通过
 issue 告知。
 
-**此项目的立意是透明一切面试难点，即 No Secret, No Difficulties**。
-
 PLAN：
 
+- 正在更新（2024-4-28）：[Redis 系列（75%）](db_redis.md)。
 - 最新完成（2024-4-26）：[幂等有几种实现方式](impl_idempotent.md) ，欢迎阅读。
-- 下篇更新：Redis 系列。
 
 ## 索引
 
@@ -20,7 +20,7 @@ PLAN：
 - [HTTP 系列](protocol_http.md)
 - [Websocket 系列](protocol_ws.md)
 - [Kafka 系列](kafka.md)
-- [Redis 系列（70%）](db_redis.md)
+- [Redis 系列（75%）](db_redis.md)
 - [MySQL 系列（25%）](db_mysql.md)
 
 ---
