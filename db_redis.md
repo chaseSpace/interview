@@ -1,6 +1,6 @@
 # Redis 相关
 
-本文内容摘自网络。
+本文内容部分摘自网络。
 
 ## 为什么 Redis 使用单线程
 
@@ -446,6 +446,11 @@ XINFO STREAM mystream # 如消息数量、消费组数量、第一个和最后�
 XINFO GROUPS mystream
 XINFO CONSUMERS mystream mygroup  # 含该消费者当前未确认的消息数量等信息
 ```
+
+**参考**
+
+- [别再用 Redis List 实现消息队列了，Stream 专为队列而生](https://www.cnblogs.com/uniqueDong/p/15959687.html)
+- [Redis命令详解：Streams](https://jackeyzhe.github.io/2019/07/01/Redis命令详解：Streams/)
 
 #### 发布订阅实现 MQ
 
