@@ -58,6 +58,10 @@ TIMESTAMP 只需要使用 4 个字节的存储空间，但是 DATETIME 需要耗
 
 TODO
 
+## 为什么不建议单表超过2000w数据
+
+TODO
+
 ## 参考
 
 - https://javaguide.cn/database/mysql/mysql-questions-01.html
