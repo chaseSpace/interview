@@ -11,7 +11,7 @@
 
 MySQL、PostgreSQL、Oracle、SQL Server、SQLite（微信本地的聊天记录的存储就是用的 SQLite）。
 
-## MySQL 字段类型
+## 字段类型相关
 
 MySQL 字段类型可以简单分为三大类：
 
@@ -39,12 +39,30 @@ TIMESTAMP 只需要使用 4 个字节的存储空间，但是 DATETIME 需要耗
 - NULL与空字符串不同，NULL 需要更多的存储空间。
 - 查询NULL值需要使用专门的SQL语句，比如 `IS NULL`和`IS NOT NULL`，而查询空字符串只需要使用 `=` 或者 `<>` 即可。
 - NULL会影响聚合函数的查询结果，例如，SUM、AVG、MIN、MAX 等聚合函数会忽略 NULL 值。
-    - COUNT(*) 会包含NULL值所在的行，但 COUNT(col) 不会。
+  - COUNT(*) 会包含NULL值所在的行，但 COUNT(col) 不会。
 - 查询不便：在查询中使用`NOT IN`或`!=`等反向条件时，查询结果不会包含NULL值所在的行，需要加上`ISNULL(col)`。
 
 注意：DISTINCT 会将多个 NULL 值算作一个 NULL。
 
 > 对于不需要做聚合的字段，可以允许NULL值。
+
+## 索引相关
+
+### 有哪些索引类型
+
+## 存储引擎相关
+
+### 有哪些存储引擎
+
+### InnoDB和MyISAM对比
+
+## 事务和锁
+
+### 介绍
+
+### 实现原理
+
+### 锁策略
 
 ## SQL语句的执行过程
 
@@ -65,4 +83,3 @@ TODO
 ## 参考
 
 - https://javaguide.cn/database/mysql/mysql-questions-01.html
-- 
