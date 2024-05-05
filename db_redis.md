@@ -8,12 +8,13 @@
 
 **参考答案**
 
-主要是因为Redis采用了内存存储、单线程模型、优化的数据结构以及I/O多路复用技术。其中：
+主要是因为 Redis 采用了内存存储、单线程模型、优化的数据结构以及 I/O 多路复用技术。其中：
 
-- 内存存储：所有数据放在内存中，完全避免了相对耗时的磁盘I/O。
+- 内存存储：所有数据放在内存中，完全避免了相对耗时的磁盘 I/O。
 - 单线程模型：单线程模型可以避免锁竞争、上下文切换等开销，也使得代码更加清晰。
-- 优化的数据结构：使用了简单动态字符串、双向链表、压缩列表、哈希表、跳表和整数数组等数据结构，能够实现O(1)或近似O(1)的时间复杂度的操作。
-- I/O 多路复用：利用了操作系统提供的多路 I/O 复用 epoll 模型，可以通过事件循环机制高效地监听多个socket上的事件。
+- 优化的数据结构：使用了简单动态字符串、双向链表、压缩列表、哈希表、跳表和整数数组等数据结构，能够实现 O(1)或近似 O(1)
+  的时间复杂度的操作。
+- I/O 多路复用：利用了操作系统提供的多路 I/O 复用 epoll 模型，可以通过事件循环机制高效地监听多个 socket 上的事件。
 
 ## 为什么 Redis 使用单线程
 
@@ -196,9 +197,178 @@ BF.INFO {key}
 
 若是 redis 3.x 版本，只能使用 redis 的 bitmap 来实现，比较麻烦。
 
-## Monitor 命令有什么用
+## Redis 有哪些监控命令
 
-todo
+主要有 info、monitor、latency 和 slowlog 命令。
+
+### info 命令
+
+`info` 命令用于获取 Redis 服务器的各种信息和统计数据，包括服务器运行状态、配置参数、客户端连接信息、内存使用情况、持久化信息、集群信息等。
+这个命令通常用于监控和诊断 Redis 服务器的运行状态。
+
+### monitor 命令
+
+`monitor` 命令用于实时打印出 Redis 服务器接收到的命令，自 1.0 版本开始可用，一般用于调试客户端程序。
+
+```shell
+127.0.0.1:6379 >monitor
+OK
+1616045629.853032 [10 192.168.0.101:37990] "PING"
+1616045629.858214 [10 192.168.0.101:37990] "PING"
+1616045632.193252 [10 192.168.0.101:37990] "EXISTS" "test_key_from_app"
+1616045632.193607 [10 192.168.0.101:37990] "GET" "test_key_from_app"
+```
+
+出于安全考虑，`monitor` 命令不记录 config/auth/exec/hello/quit 命令，其中的 hello 命令是 redis 6.0 新增的命令。
+
+### latency 命令
+
+`latency` 命令用于监视和测量 Redis 实例的延迟。比如 Redis 中的 HSCAN/SSCAN/ZSCAN 命令的时间复杂度都是 O(n)
+，当操作的数据量非常大的时候，会导致延迟。
+还有 ZRANGE/ZREVRANGE 命令也有这种情况。所以我们需要一种方式来检测和监控这些命令的延迟。
+
+```shell
+# 默认延迟阈值为0 ms，表示不监控
+127.0.0.1:6379> config get latency-monitor-threshold
+1) "latency-monitor-threshold"
+2) "0"
+
+# 设置10ms，记录大于等于10ms的命令事件
+127.0.0.1:6379> config set latency-monitor-threshold 10
+OK
+
+# debug模拟命令延迟，`sleep .10` 表示命令停顿10ms
+# 此处模拟两条延迟命令
+127.0.0.1:6379> debug sleep .10
+OK
+127.0.0.1:6379> debug sleep .20
+OK
+
+# 获取已记录事件的最后一次延迟
+127.0.0.1:6379> latency latest
+1) 1) "command" # 事件名，此外，还有fast-command、fork事件
+   2) (integer) 1714906319 # 最后发生unix时间戳
+   3) (integer) 200 # 最后事件延迟，ms
+   4) (integer) 200 # 本事件的最大延迟，ms
+   
+127.0.0.1:6379> debug sleep .10
+OK
+127.0.0.1:6379> latency latest
+1) 1) "command"
+   2) (integer) 1714907607
+   3) (integer) 101 # 最新的一次
+   4) (integer) 200 # 最大的一次
+
+# 查看`command`事件的所有记录，最多包含160个（不会记录具体命令）
+127.0.0.1:6379> latency history command
+1) 1) (integer) 1714906316
+   2) (integer) 101
+2) 1) (integer) 1714906319
+   2) (integer) 200
+3) 1) (integer) 1714907607
+   2) (integer) 101
+
+# 清除所有事件记录
+127.0.0.1:6379> latency reset
+(integer) 1
+
+127.0.0.1:6379> latency history command
+(empty list or set)
+
+# 现在使用 graph 子命令绘制字符趋势图
+127.0.0.1:6379> debug sleep .1
+OK
+127.0.0.1:6379> debug sleep .2
+OK
+127.0.0.1:6379> debug sleep .3
+OK
+127.0.0.1:6379> debug sleep .2
+OK
+# 字符图每列下面的垂直标签表示事件是多久之前发生的，竖着看，依次是10s, 8s, 6s, 3s.
+127.0.0.1:6379> latency graph command
+command - high 300 ms, low 102 ms (all time high 300 ms)
+--------------------------------------------------------------------------------
+  # 
+  |_
+ #||
+_|||
+    
+1863
+0sss
+s
+
+# doctor 子命令提供统计说明和建议
+127.0.0.1:6379> latency doctor
+Dave, I have observed latency spikes in this Redis instance. You don't mind talking about it, do you Dave?
+
+# 4个延迟毛刺，平均201ms，中位差50ms，持续83s，最差300ms。
+1. command: 4 latency spikes (average 201ms, mean deviation 50ms, period 83.00 sec). Worst all time event 300ms.
+
+I have a few advices for you:
+
+- Check your Slow Log to understand what are the commands you are running which are too slow to execute. Please check http://redis.io/commands/slowlog for more information.
+- Deleting, expiring or evicting (because of maxmemory policy) large objects is a blocking operation. If you have very large objects that are often deleted, expired, or evicted, try to fragment those objects into multiple smaller objects.
+```
+
+常用的两种延迟事件类型：
+
+- command：测量可能很慢（如 O(logN+M)和 O(n）的命令的执行延迟毛刺的事件；
+- fast-command：监控时间复杂度为 O(1)和 O(logN)的命令的事件名称；
+
+还有其他事件类型，用于监控 Redis 执行的耗时的特殊操作。
+
+### slowlog 命令
+
+slowlog 命令是对 latency 命令的补充，用于记录超过延迟阈值的 Redis 命令，自 2.2.12 版本可用。
+
+```shell
+# 获取慢日志条数限制，默认128条，超出后删除旧的记录。可set
+127.0.0.1:6379> config get slowlog-max-len
+1) "slowlog-max-len"
+2) "128"
+# 获取慢日志的延迟阈值，微秒，默认10ms。可set
+127.0.0.1:6379> config get slowlog-log-slower-than
+1) "slowlog-log-slower-than"
+2) "10000"
+
+# 获取慢日志
+127.0.0.1:6379> slowlog get 
+ 1) 1) (integer) 13 # 自增序号
+    2) (integer) 1714908107 # unix时间戳
+    3) (integer) 202769 # 耗时，微秒
+    4) 1) "debug"
+       2) "sleep"
+       3) ".2"
+    5) "127.0.0.1:33970" # client ip和端口
+    6) "" # client名称（通过client setname设置，v2.6.9+）
+ 2) 1) (integer) 12
+    2) (integer) 1714908104
+    3) (integer) 300173
+    4) 1) "debug"
+       2) "sleep"
+       3) ".3"
+    5) "127.0.0.1:33970"
+    6) ""
+省略部分。
+
+# 慢日志目前条数
+127.0.0.1:6379> slowlog len
+(integer) 14
+# 清空慢日志
+127.0.0.1:6379> slowlog reset
+OK
+127.0.0.1:6379> slowlog len
+(integer) 0
+127.0.0.1:6379> slowlog get 
+(empty list or set)
+```
+
+### 参考
+
+- [MONITOR](https://redis.com.cn/commands/monitor.html)
+- [Redis 延迟监控](https://redis.com.cn/topics/latency-monitor.html)
+- [Redis 自身状态及命令](https://pdai.tech/md/db/nosql-redis/db-redis-y-monitor.html#Redis自身状态及命令)
+- [redis 查看耗时久的命令](https://blog.csdn.net/weixin_38155824/article/details/133384252)
 
 ## Redis 的持久化策略
 
@@ -212,11 +382,12 @@ todo
 
 **确认内存淘汰策略**
 
-首先确认Redis目前的内存淘汰策略，当设置为`noeviction`时，内存满了之后，所有**申请内存**的命令都会返回错误。如果是其他策略，则Redis会根据策略进行内存淘汰。
+首先确认 Redis 目前的内存淘汰策略，当设置为`noeviction`时，内存满了之后，所有**申请内存**的命令都会返回错误。如果是其他策略，则
+Redis 会根据策略进行内存淘汰。
 
 **扩容**
 
-- 若是自建的Redis单机架构、主从架构（包括哨兵模式），可以考虑通过`config set maxmemory`指令做到内存的动态扩容，前提是服务器拥有足够的内存。
+- 若是自建的 Redis 单机架构、主从架构（包括哨兵模式），可以考虑通过`config set maxmemory`指令做到内存的动态扩容，前提是服务器拥有足够的内存。
   - 这些架构在服务器内存不足时，只能**停机**扩容或切换主节点。
 - 若是自建的集群架构，可以借助`redis-trib`工具实现节点的**动态扩容**（缩容也可）。
 - 一般都是使用云托管服务，这就方便很多了，因为大部分云都支持在线扩缩容，无论是标准（含主从）架构还是集群架构（云服务一般支持这两种架构）。
@@ -227,11 +398,11 @@ todo
 
 **参考**
 
-- [redis专题：redis集群的动态扩容缩容，水平扩展](https://blog.51cto.com/u_15281317/3008526)
+- [redis 专题：redis 集群的动态扩容缩容，水平扩展](https://blog.51cto.com/u_15281317/3008526)
 - [腾讯云 Redis 变更实例规格](https://cloud.tencent.com/document/product/239/30895)
 - [腾讯云 Redis 内存版（标准架构）](https://cloud.tencent.com/document/product/239/36151)
 - [腾讯云 Redis 升级实例架构](https://cloud.tencent.com/document/product/239/46458)
-- [阿里云：什么是云数据库Redis版](https://help.aliyun.com/zh/redis/product-overview/what-is-apsaradb-for-redis)
+- [阿里云：什么是云数据库 Redis 版](https://help.aliyun.com/zh/redis/product-overview/what-is-apsaradb-for-redis)
 
 ## Redis 集群相关
 
@@ -243,7 +414,7 @@ todo
 
 ### 动态增减节点时数据会重新分配吗
 
-### 为什么槽位设计成16384个
+### 为什么槽位设计成 16384 个
 
 ## 参考
 
@@ -509,7 +680,7 @@ XINFO CONSUMERS mystream mygroup  # 含该消费者当前未确认的消息数�
 **参考**
 
 - [别再用 Redis List 实现消息队列了，Stream 专为队列而生](https://www.cnblogs.com/uniqueDong/p/15959687.html)
-- [Redis命令详解：Streams](https://jackeyzhe.github.io/2019/07/01/Redis命令详解：Streams/)
+- [Redis 命令详解：Streams](https://jackeyzhe.github.io/2019/07/01/Redis命令详解：Streams/)
 
 #### 发布订阅实现 MQ
 
@@ -655,21 +826,22 @@ Session 是指用户登录后的请求凭据，用来验证用户身份。
 
 **简单实现**
 
-1. 首次首次访问网站时，服务器为用户创建一个唯一的 Session ID，通常是一个长随机字符串，并保存在Redis Key中。服务器将这个Session
-   ID 发送给客户端，后者在下次请求时带上这个 Session ID（通过Header或Cookie）。
-2. 在后续请求中，客户端将 Session ID 发送给服务器，服务器从Redis中根据 Session ID 找到对应的会话Key，然后返回用户会话信息。
-3. 其中某些请求可能需要更新用户会话信息，比如修改用户资料，添加商品到购物车等，服务器会在找到对应的会话Key后，更新会话信息。
+1. 首次首次访问网站时，服务器为用户创建一个唯一的 Session ID，通常是一个长随机字符串，并保存在 Redis Key 中。服务器将这个
+   Session
+   ID 发送给客户端，后者在下次请求时带上这个 Session ID（通过 Header 或 Cookie）。
+2. 在后续请求中，客户端将 Session ID 发送给服务器，服务器从 Redis 中根据 Session ID 找到对应的会话 Key，然后返回用户会话信息。
+3. 其中某些请求可能需要更新用户会话信息，比如修改用户资料，添加商品到购物车等，服务器会在找到对应的会话 Key 后，更新会话信息。
 
 ### 排行榜
 
-使用ZSet可以轻松实现排行榜功能。
+使用 ZSet 可以轻松实现排行榜功能。
 
 实现步骤：
 
-- 使用有序集合存储排行榜数据，将每个成员作为排行榜中的一个项，分数作为该项的分数，例如，用户ID作为成员，分数为用户的得分。
+- 使用有序集合存储排行榜数据，将每个成员作为排行榜中的一个项，分数作为该项的分数，例如，用户 ID 作为成员，分数为用户的得分。
 - 使用`ZADD`命令将成员及其分数添加到有序集合中。
 - 使用`ZREVRANGE`命令按照分数从高到低的顺序获取排行榜数据。
-- 使用`ZREVRANK`命令获取某个成员的排名（高到低，从0开始）。
+- 使用`ZREVRANK`命令获取某个成员的排名（高到低，从 0 开始）。
 - 使用`ZREM`命令删除排行榜中的某个成员。
 - 使用`ZCARD`命令获取排行榜中的成员数量。
 - 使用`ZCOUNT`命令获取某个分数范围内的成员数量。
@@ -679,27 +851,28 @@ Session 是指用户登录后的请求凭据，用来验证用户身份。
 **相同分数问题**
 
 在排行榜中比较常见的一个问题就是，相同分数的成员排序问题，大部分业务场景都要求相同分数的成员按照更新时间先后排序。
-此时在取出榜单列表后（通常是topN），单独查询相同分数的成员的更新时间，然后对<u>它们</u>重新排序。
+此时在取出榜单列表后（通常是 topN），单独查询相同分数的成员的更新时间，然后对<u>它们</u>重新排序。
 
 ### 附近的人
 
 **业务说明**
 
-这是一个常见的业务需求，比如微信中的“附近的人”功能，以及房产APP中查看附近的房源。
-如果业务数据量较大（百万加），最好直接使用数据库或搜索引擎来实现，毕竟很多情况下这些数据都是存在数据库中的（Redis存储和计算压力较大），比如Solr、ES、PgSQL、MySQL和MongoDB。
-如果数据量不高（万级）或要求实时性，可以使用Redis的Geo模块来实现。
+这是一个常见的业务需求，比如微信中的“附近的人”功能，以及房产 APP 中查看附近的房源。
+如果业务数据量较大（百万加），最好直接使用数据库或搜索引擎来实现，毕竟很多情况下这些数据都是存在数据库中的（Redis
+存储和计算压力较大），比如 Solr、ES、PgSQL、MySQL 和 MongoDB。
+如果数据量不高（万级）或要求实时性，可以使用 Redis 的 Geo 模块来实现。
 
 > [!NOTE]
-> 使用Redis的另一个限制是，不支持二次排序。
+> 使用 Redis 的另一个限制是，不支持二次排序。
 
 > [!TIP]
-> 在海量数据的Geo查询场景中，首先肯定是使用磁盘型数据库。然后会使用GeoHash优化查询（再附加其他条件），然后在业务层加上缓存，即可实现功能。
+> 在海量数据的 Geo 查询场景中，首先肯定是使用磁盘型数据库。然后会使用 GeoHash 优化查询（再附加其他条件），然后在业务层加上缓存，即可实现功能。
 
 **实现方式**
 
-自Redis v3.2起开始支持Geo模块。
+自 Redis v3.2 起开始支持 Geo 模块。
 
-- 使用`GEOADD`命令将给定的位置对象（纬度、经度、名字）添加到指定的key;
+- 使用`GEOADD`命令将给定的位置对象（纬度、经度、名字）添加到指定的 key;
 - 使用`GEORADIUS`命令获取**指定经纬度**的半径范围内的多个位置对象;
   - 支持结果集从近到远或反向排序；
   - 支持返回每个位置对象与指定位置之间的距离；
@@ -710,36 +883,36 @@ Session 是指用户登录后的请求凭据，用来验证用户身份。
 
 - 使用`GEOPOS`命令获取给定位置对象的经度和纬度;
 - 使用`GEODIST`命令获取两个给定位置之间的距离；
-- 使用`GEOHASH`命令获取一个或多个给定位置对象的Geohash值。
+- 使用`GEOHASH`命令获取一个或多个给定位置对象的 Geohash 值。
 
 **简单原理**
 
-Redis的GEO数据结构是使用ZSet+GeoHash来实现的，它将位置对象存储在ZSet中，分数为从经纬度转换来的GeoHash值。
+Redis 的 GEO 数据结构是使用 ZSet+GeoHash 来实现的，它将位置对象存储在 ZSet 中，分数为从经纬度转换来的 GeoHash 值。
 
 **参考**
 
 - [Redis 到底是怎么实现“附近的人”这个功能的呢](https://juejin.cn/post/6844903966061363207)
 - [GeoHash+Mysql 处理地理位置](https://juejin.cn/post/7113004754149572639)
-- [揭开附近的“人”神秘面纱：初识GeoHash算法](https://juejin.cn/post/7255220627795525693?from=search-suggest)
+- [揭开附近的“人”神秘面纱：初识 GeoHash 算法](https://juejin.cn/post/7255220627795525693?from=search-suggest)
 
 ### 共同好友
 
-Set结构可以使用`SINTER`命令求交集的方式获取共同好友，但实践中较少使用。这是因为用户通常具有较多属性，比如等级等等。
-业务通常不仅需要查出共同好友，还要按照某个属性排序，这个Redis是无法实现的，通常都是使用数据库如MySQL来实现。
-如果查询频率高，可以将交集缓存到Redis中，然后在源数据变更的时候，清除缓存。
+Set 结构可以使用`SINTER`命令求交集的方式获取共同好友，但实践中较少使用。这是因为用户通常具有较多属性，比如等级等等。
+业务通常不仅需要查出共同好友，还要按照某个属性排序，这个 Redis 是无法实现的，通常都是使用数据库如 MySQL 来实现。
+如果查询频率高，可以将交集缓存到 Redis 中，然后在源数据变更的时候，清除缓存。
 
-Redis的另一个局限是数据通常只是作为数据库的缓存，若用于存储好友列表，还要保证与数据库的数据一致性，这个实现起来也很繁琐而且不能较好的保证一致性。
-所以在实践中，**Set结构只用于查询仅Redis存储的数据的交集**。
+Redis 的另一个局限是数据通常只是作为数据库的缓存，若用于存储好友列表，还要保证与数据库的数据一致性，这个实现起来也很繁琐而且不能较好的保证一致性。
+所以在实践中，**Set 结构只用于查询仅 Redis 存储的数据的交集**。
 
 ### 计数器
 
 **业务场景**
 
-比如统计网页一小时访问量，单个IP的访问次数，对单个用户的发送短信次数等。
+比如统计网页一小时访问量，单个 IP 的访问次数，对单个用户的发送短信次数等。
 
 **实现**
 
-Redis提供`INCR`和`INCRBY`命令，可以很方便的实现计数器功能。若要同时使用统计功能，则可以使用Redis的ZSet结构来存储数据，
-然后使用`ZINCRBY`命令来更新计数。比如查询上一小时内访问量Top 10的IP列表（Key名标识一个小时），使用`ZREVRANGE`命令即可。
+Redis 提供`INCR`和`INCRBY`命令，可以很方便的实现计数器功能。若要同时使用统计功能，则可以使用 Redis 的 ZSet 结构来存储数据，
+然后使用`ZINCRBY`命令来更新计数。比如查询上一小时内访问量 Top 10 的 IP 列表（Key 名标识一个小时），使用`ZREVRANGE`命令即可。
 
 [0]: https://github.com/redisson/redisson/tree/master
