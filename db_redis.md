@@ -374,10 +374,6 @@ OK
 
 todo
 
-## Redis 支持哪些部署模型
-
-todo
-
 ## Redis 作为缓存时如何保证与数据库的一致性
 
 这是一个常见面试题。参考答案如下：
@@ -547,6 +543,8 @@ Redis v2.8 版本开始引入。哨兵的核心功能是通过增加一个**哨�
 - https://pdai.tech/md/db/nosql-redis/db-redis-x-sentinel.html
 
 ### 4. 集群架构
+
+TODO
 
 #### 什么是分片存储
 
