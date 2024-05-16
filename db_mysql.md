@@ -80,6 +80,92 @@ TODO
 
 TODO
 
+## 常用SQL
+
+```sql
+-- 查看版本
+SELECT VERSION();
+
+-- 查看支持引擎列表
+SHOW
+ENGINES; -- v5.5.5之后innodb成为默认引擎，且只有它支持事务
+    
+-- 查看默认引擎
+SHOW
+VARIABLES  LIKE '%storage_engine%';
+```
+
+### 优化和检查表
+
+```sql
+-- 检查表的完整性
+CHECK TABLE table_name;
+
+-- 修复表
+REPAIR
+TABLE table_name;
+
+-- 分析表，用于更新表的统计信息
+ANALYZE
+TABLE table_name;
+
+-- 优化表
+OPTIMIZE
+TABLE table_name;
+```
+
+### 备份和恢复
+
+```sql
+-- 使用mysqldump工具备份数据库
+mysqldump
+-u username -p database_name > backup_file.sql
+
+-- 从备份文件恢复数据库
+mysql -u username -p database_name < backup_file.sql
+```
+
+或使用GUI工具。
+
+### 查看表和索引信息
+
+```sql
+-- 查看表结构
+DESCRIBE table_name;
+
+-- 等同于 DESCRIBE ~
+SHOW
+COLUMNS FROM table_name;
+
+-- 查看索引信息
+SHOW
+INDEX FROM table_name;
+```
+
+### 监控和性能调优
+
+```sql
+-- 查看当前正在执行的查询，不加full只显示前100条。非root用户只看到自己占用的连接
+-- 命令详解：https://juejin.cn/post/6856958149027774477
+SHOW
+[FULL] PROCESSLIST;
+
+-- 查看服务器概况信息，含当前连接信息、用户、服务器版本、client&server字符集、开启线程数、慢查询数、打开表数量、QPS等
+STATUS;
+
+-- 获取数据库状态变量信息（只读），GLOBAL关键字仅查看全局状态变量
+SHOW
+[SESSION|GLOBAL] STATUS;
+
+-- 获取数据库变量信息
+SHOW
+[SESSION|GLOBAL] VARIABLES;
+    
+-- 修改变量
+SET
+[SESSION|GLOBAL] variable_name = value;
+```
+
 ## 参考
 
 - https://javaguide.cn/database/mysql/mysql-questions-01.html
