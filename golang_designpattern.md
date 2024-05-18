@@ -418,13 +418,13 @@ Go 语言没有 Java/Python 中的构造函数概念（也就没有工厂类概�
 **举例**：使用解释器模式来解释`3 * (5 + 12)-1`。完成这个任务需要以下步骤：
 
 - 定义词法和语法规则。
-  - 词法：允许单个和多个字符构成的数字，如数字 3,5,12,1 都是终结符。
-  - 加减法（+-）和乘法（*）是二元运算符，它们是非终结符，因为它们可以分解为两个操作数。
-  - 括号用于指定运算的优先级。
+    - 词法：允许单个和多个字符构成的数字，如数字 3,5,12,1 都是终结符。
+    - 加减法（+-）和乘法（*）是二元运算符，它们是非终结符，因为它们可以分解为两个操作数。
+    - 括号用于指定运算的优先级。
 - 构建语法树（AST），由多个不同类型的节点构成，此例中具有如下几个节点类型：
-  - NumberExpression 表示一个数字。
-  - AddExpression、MinusExpression、MultiplyExpression 都表示一个二元运算，即加减法和乘法。
-  - ParenthesesExpression 表示一个带有括号的子表达式。
+    - NumberExpression 表示一个数字。
+    - AddExpression、MinusExpression、MultiplyExpression 都表示一个二元运算，即加减法和乘法。
+    - ParenthesesExpression 表示一个带有括号的子表达式。
 - 解析表达式：使用一个递归下降解析器，根据语法规则解析语法树，并计算出结果。
 
 示例：[dp_interpreter.go](design_pattern/dp_interpreter.go)

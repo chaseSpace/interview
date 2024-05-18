@@ -336,8 +336,8 @@ func TestSliceShareArr(t *testing.T) {
 
 - nil 切片的内存地址是 0，空切片则是一个非 0 地址
 - nil 切片不可以作为 copy 参数的`dst`参数（语法正确，但无法填入数据）
-  - 因为 copy 不负责对`dst`进行扩容
-  - nil 切片可以 append
+    - 因为 copy 不负责对`dst`进行扩容
+    - nil 切片可以 append
 
 ### new 和 make 的区别
 
