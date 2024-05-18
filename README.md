@@ -12,6 +12,7 @@ issue 告知。
 PLAN：
 
 - 正在更新（2024-5-15）：[Redis 系列（89%）](db_redis.md)。
+- 正在更新（2024-5-18）：[MySQL 系列（70%）](db_mysql.md)。
 - 最新完成（2024-4-26）：[幂等有几种实现方式](impl_idempotent.md) ，欢迎阅读。
 
 ## 索引
@@ -21,7 +22,7 @@ PLAN：
 - [Websocket 系列](protocol_ws.md)
 - [Kafka 系列](kafka.md)
 - [Redis 系列（89%）](db_redis.md)
-- [MySQL 系列（25%）](db_mysql.md)
+- [MySQL 系列（70%）](db_mysql.md)
 
 ---
 
