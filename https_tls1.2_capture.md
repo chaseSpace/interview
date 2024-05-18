@@ -91,7 +91,7 @@ Server 回复一条 ServerHello 类型的 TLS 握手消息。理解了 ClientHel
 - Extension 列表：。。。
     - ServerHello 中的扩展类型必需在 ClientHello 的 Extensions 列表中存在，否则客户端应该中断握手（使用 alert 消息）
 
-#### 3. S->Certificate/...
+#### 3. S->Certificate/
 
 <div align="left">
 <img src="./img/https_handshake_1rtt_cert.png" width="1000" height="800"> </img> 
@@ -118,7 +118,7 @@ Server 继续回复三条类型不同的 TLS 握手消息，根据消息长度�
     - 此消息意味着 ServerHello 消息的所有信息都已发送完毕，也象征着第一次 RTT 完成。
     - ServerHelloDone 消息本身不包含任何数据，它只是一个通知。
 
-#### 4. C->Certificate/...
+#### 4. C->Certificate/
 
 <div align="left">
 <img src="./img/https_handshake_2rtt_client.png" width="1300" height="700"> </img> 
@@ -151,7 +151,7 @@ Server 继续回复三条类型不同的 TLS 握手消息，根据消息长度�
     - 用于签名的哈希和签名算法必须是服务器在 CertificateRequest 消息中指定的 supported_signature_algorithms 字段中列出的算法之一。
     - 此外，所使用的哈希和签名算法必须与客户端证书中的密钥类型兼容。RSA 密钥可以与任何允许的哈希算法一起使用，除非证书中有限制。
 
-#### 5. S->CipherChangeSpec/...
+#### 5. S->CipherChangeSpec/
 
 服务器会在收到客户端的 Finish 消息后回复 CipherChangeSpec 和 Finished 消息，它的作用与客户端的 CipherChangeSpec 和
 Finished 消息相同。
@@ -180,12 +180,13 @@ DH（Diffie-Hellman）是一个安全的密钥交换协议，他可以让双方�
 该密钥可用于后续的通信中用作对称密钥来加密内容。该算法由 Diffie 和 Hellman 在 1976 年发明。
 虽然 DH 密钥交换本身是一个匿名（无认证）的密钥交换协议，它却是很多认证协议的基础。
 
-DHE（Diffie-Hellman Ephemeral）和ECDHE（Elliptic Curve Diffie-Hellman Ephemeral）是两种用于安全通信的密钥交换算法。
-它们都属于Diffie-Hellman密钥交换家族，但使用了不同的数学基础和参数。其中DHE是早期系统中使用较多的密钥交换算法，ECDHE则是后起之秀，
-在相同安全性的前提下，ECDHE在性能和资源消耗方面都优于DHE。
-TLS 1.2和TLS 1.3 两种算法都支持。
+DHE（Diffie-Hellman Ephemeral）和 ECDHE（Elliptic Curve Diffie-Hellman Ephemeral）是两种用于安全通信的密钥交换算法。
+它们都属于 Diffie-Hellman 密钥交换家族，但使用了不同的数学基础和参数。其中 DHE 是早期系统中使用较多的密钥交换算法，ECDHE
+则是后起之秀，
+在相同安全性的前提下，ECDHE 在性能和资源消耗方面都优于 DHE。
+TLS 1.2 和 TLS 1.3 两种算法都支持。
 
-DH家族算法的基本原理都是相同的，下面以ECDHE为例来解释其工作原理。
+DH 家族算法的基本原理都是相同的，下面以 ECDHE 为例来解释其工作原理。
 
 假定 A 和 B 要协商一个共享密钥，他们事先不知道对方任何信息：
 

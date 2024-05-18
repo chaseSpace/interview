@@ -34,7 +34,7 @@ PLAN：
 ---
 
 - [Linux 基础篇（TODO）](linux_basic.md)
-- [高性能服务器的I/O设计模式：Reactor/Proactor](io_dp.md)
+- [高性能服务器的 I/O 设计模式：Reactor/Proactor](io_dp.md)
 
 ---
 
@@ -54,11 +54,11 @@ PLAN：
 - [如何设计一个连接池（TODO）](system_design/how_to_design_a_connection_pool.md)
 - [如何设计一个海量的任务调度系统（TODO）](system_design/how_to_design_a_task_scheduling_system.md)
 - [如何设计一个高可用性的系统（TODO）](system_design/design_ha_system.md)
-- [如何设计一个RPC框架（TODO）](system_design/design_a_rpc_framework.md)
+- [如何设计一个 RPC 框架（TODO）](system_design/design_a_rpc_framework.md)
 - [如何设计一个消息队列（TODO）](system_design/design_a_message_queue.md)
 - [如何设计微博的点赞功能（TODO）](system_design/design_a_like_function.md)
-- [如何设计社交APP的朋友圈功能（TODO）](system_design/design_a_friend_circle_function.md)
-- [如何设计Github或Tweet的Feed流功能（TODO）](system_design/design_a_feed_function.md)
+- [如何设计社交 APP 的朋友圈功能（TODO）](system_design/design_a_friend_circle_function.md)
+- [如何设计 Github 或 Tweet 的 Feed 流功能（TODO）](system_design/design_a_feed_function.md)
 
 --- 
 
@@ -76,11 +76,11 @@ PLAN：
 ## 关于作者
 
 - 昵称：Leigg
-- 技术栈：主Go，副Python/Rust；K8s/Istio
-- 编程年限：7年+
+- 技术栈：主 Go，副 Python/Rust；K8s/Istio
+- 编程年限：7 年+
 - Github：https://github.com/chaseSpace
 - 主要作品：[区块链入门][2]，[Kubernetes 中文教程][1]
-- 联系方式：random2035艾特qq.com
+- 联系方式：random2035@qq.com
 
 [0]: https://www.zhihu.com/question/26312148/answer/1982172738
 

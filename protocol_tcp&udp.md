@@ -218,14 +218,14 @@ TCP 的流量控制只考虑了接收端的接收能力，而没有考虑到网�
   - 在快速重传后，发送方可以进入快速恢复阶段。将 ssthresh 设置为 cwnd 的一半，并将 cwnd 设置为新的 ssthresh 值，然后执行拥塞避免算法。
   - 在快速恢复阶段，发送方继续发送新数据，同时等待丢失数据段的确认。
 
-注意，发送方可发送的数据是由拥塞窗口cwnd和接收窗口rwnd共同决定的，即取二者较小值。
+注意，发送方可发送的数据是由拥塞窗口 cwnd 和接收窗口 rwnd 共同决定的，即取二者较小值。
 
 **拥塞控制全过程**
 <div align="left">
 <img src="img/tcp_congestion1.png" width="773" height="322">
 </div>
 
-**三次重复ACK**
+**三次重复 ACK**
 <div align="left">
 <img src="img/tcp_congestion_retransmit.png" width="673" height="322">
 </div>
@@ -241,7 +241,7 @@ TCP 的流量控制只考虑了接收端的接收能力，而没有考虑到网�
 服务端收到第三次握手的 ACK 后，内核会把连接从半连接队列移除，然后创建新的完全连接，并将其添加到 ACCEPT 队列，等待进程调用
 `accept` 函数时把连接取出来。
 
-> 不管是半连接队列还是全连接队列，都有最大长度限制，超过限制时，内核会直接丢弃，或返回 RST 包（一种TCP标志报文，通知客户端重新建立连接）。
+> 不管是半连接队列还是全连接队列，都有最大长度限制，超过限制时，内核会直接丢弃，或返回 RST 包（一种 TCP 标志报文，通知客户端重新建立连接）。
 
 - [实战：查看 TCP 全连接队列溢出](https://xiaolincoding.com/network/3_tcp/tcp_queue.html#实战-tcp-全连接队列溢出)
 - [实战：查看 TCP 半连接队列溢出](https://xiaolincoding.com/network/3_tcp/tcp_queue.html#实战-tcp-半连接队列溢出)

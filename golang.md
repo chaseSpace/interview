@@ -19,7 +19,7 @@
 - 丰富的生态：包含常用第三方工具或 sdk。如各种数据库、消息队列、缓存等的 SDK
 - 成名项目：K8s/Docker/Prometheus/Istio/Nsq 等
 
-因为Google为其背书，Go语言得以快速发展，如今已经是市场就业的热门语言。
+因为 Google 为其背书，Go 语言得以快速发展，如今已经是市场就业的热门语言。
 
 ### 缺点
 
@@ -332,12 +332,12 @@ func TestSliceShareArr(t *testing.T) {
 
 [TestIterateSlice]: https://github.com/chaseSpace/interview/blob/849b05cc1298042d4c889fc358a220b0b3f58f89/tests/slice_test.go#L38
 
-### nil切片与空切片的区别
+### nil 切片与空切片的区别
 
-- nil切片的内存地址是0，空切片则是一个非0地址
-- nil切片不可以作为copy参数的`dst`参数（语法正确，但无法填入数据）
-    - 因为copy不负责对`dst`进行扩容
-    - nil切片可以append
+- nil 切片的内存地址是 0，空切片则是一个非 0 地址
+- nil 切片不可以作为 copy 参数的`dst`参数（语法正确，但无法填入数据）
+  - 因为 copy 不负责对`dst`进行扩容
+  - nil 切片可以 append
 
 ### new 和 make 的区别
 
