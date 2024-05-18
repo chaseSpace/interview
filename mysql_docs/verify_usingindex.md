@@ -6,7 +6,13 @@
 指的是查询字段、排序字段、分组字段、连接字段，都要被 SQL 选择的索引覆盖，缺一不可！
 
 > [!IMPORTANT]
-> **所有列都可以使用索引**不是指所有列都建立了索引，而是所有列都被 SQL 选择的索引所覆盖。
+> - **所有列都可以使用索引**不是指所有列都建立了索引，而是所有列都被 SQL 选择的索引所覆盖。
+> - 即使没有 Extra 列未显示`Using index`，SQL 也可以使用索引。
+
+**官方文档**
+
+在[MySQL 5.7 官方文档 Extra](https://dev.mysql.com/doc/refman/5.7/en/explain-output.html#explain-extra-information)
+的页面中精确搜索`Using index`关键字，第一个结果就是。
 
 ## 准备环境
 
