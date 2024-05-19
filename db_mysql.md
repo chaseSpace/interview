@@ -234,7 +234,7 @@ where name = 'a'
 - IN 的取值范围较大时会导致索引失效。
 - 避免发生隐式转换，比如索引列是`varchar`类型，而条件使用了`int`类型（而且转换后字面量可能不同！）。
 
-## 事务
+## 事务使用
 
 ### 介绍
 
@@ -247,7 +247,7 @@ where name = 'a'
 - 隔离性：事务之间不能互相干扰（受到隔离级别影响！！！）。
 - 持久性：事务执行之后，对数据库的修改是永久的。
 
-隔离级别：
+事务允许用户设置隔离级别，来根据场景控制事务的并发性能，不同的隔离级别适用于不同场景：
 
 - READ UNCOMMITTED：**最低**的隔离级别，允许脏读，不可重复读和幻读。
 - READ COMMITTED：禁止脏读，允许不可重复读和幻读。
@@ -256,28 +256,135 @@ where name = 'a'
 
 ### 事务控制语句
 
-```sql
-BEGIN 或
-START TRANSACTION -- 显式地开启一个事务；
+```plain
+BEGIN 或 START TRANSACTION -- 显式地开启一个事务；
 COMMIT 也可以使用 COMMIT WORK -- 提交事务，二者是等价；
 ROLLBACK 也可以使用 ROLLBACK WORK -- 回滚事务，二者是等价；
 SAVEPOINT identifier -- 创建一个保存点，用于回滚事务；
 RELEASE SAVEPOINT identifier -- 删除一个事务的保存点；
 ROLLBACK TO identifier -- 把事务回滚到标记点；
-SET AUTOCOMMIT=0/1 -- 禁止/开启自动提交，显式执行事务时关闭；
-SELECT @@tx_isolation -- 查看当前事务的隔离级别；
-SELECT @@global.tx_isolation; -- 查看全局的事务隔离级别；
-SELECT @@transaction_isolation; -- 8.0以上版本
 ```
 
-设置事务隔离级别：
+**查询自动提交开关**
+
+开启自动提交后，除非使用`BEGIN`或`START TRANSACTION`显式开启事务，否则每个 SQL 都自动在一个事务中完成。
+带来的直观影响就是，加锁的 SQL 执行后会立即释放锁。
 
 ```sql
--- isolation_level 替换为具体隔离级别
-SET SESSION TRANSACTION ISOLATION LEVEL isolation_level;
+SHOW
+VARIABLES LIKE '%autocommit%' -- 默认开;
+SET AUTOCOMMIT=0 -- 关闭自动提交，1开启；
 ```
 
-### 实现原理
+**查询隔离级别**
+
+```sql
+-- 查看当前、全局事务的隔离级别，仅适用于8.0以下版本；
+SELECT @@tx_isolation;
+SELECT @@global.tx_isolation;
+
+-- 5.7及以上版本
+SELECT @@transaction_isolation;
+SELECT @@global.transaction_isolation;
+```
+
+**修改隔离级别**
+
+```sql
+-- isolation_level 替换为具体隔离级别，包括 {READ UNCOMMITTED | READ COMMITTED | REPEATABLE READ | SERIALIZABLE}
+SET
+{SESSION | GLOBAL} TRANSACTION ISOLATION LEVEL isolation_level;
+
+-- example
+SET
+GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+```
+
+### 锁定机制
+
+锁定机制可以在事务并发时保证数据的一致性和完整性。MySQL 中的锁
+
+#### 锁类型
+
+- 共享锁（S 锁，Shared Lock）：读锁，允许多个事务同时读，但不允许并发读写（包括获取共享锁的事务）。
+- 排他锁（X 锁，Exclusive Lock）：粒度最大，与其他任何锁互斥，完全占有行，当前事务可以读写，其他事务同一时刻不能读写该行。
+  - 例如，INSERT、UPDATE、DELETE 语句会自动使用排他锁，所以说修改数据的单条 SQL 具有原子性。
+- 意向锁（Intent Locks）：表示事务将要对表中的某些行加锁，主要作用是为了让行级锁和表级锁之间能够协同工作。
+  - 仅 Innodb 支持。
+  - 意向共享锁（IS 锁）：当一个事务打算在某些行上加共享锁时，它会先在表上加一个意向共享锁。
+  - 意向排他锁（IX 锁）：当一个事务打算在某些行上加排他锁时，它会先在表上加一个意向排他锁。
+  - **自动管理**：意向锁由存储引擎自动管理，不能手动获取。
+  - 在为数据行加共享锁 / 排他锁之前，InnoDB 会先获取该表的意向共享/排他锁。
+
+#### 锁粒度
+
+- 表级锁：锁定整张表，适用于需要对整张表进行操作的场景。
+  - 比如在执行某些 DDL 操作（如 ALTER TABLE）时会使用表级锁。
+  - Innodb 和 MyISAM 支持。
+  - IS 锁、IX 锁是表级锁。
+  - 显式使用：`LOCK TABLE [tbl_name {READ|WRITE} ...]`
+- 行级锁：锁定单行数据，可以允许其他事务访问不同的行，适用于高并发的应用场景。
+  - InnoDB 支持，是默认锁级别。
+  - S 锁、X 锁是行级锁。
+- 页级锁：锁定整页数据，适用于对大量数据进行操作的场景。
+
+#### 锁思想
+
+- 悲观锁：先获取锁，再执行操作。
+  - 可通过 X 锁或 S 锁实现。
+- 乐观锁：先执行操作，提交时检查数据是否被其他事务更改，否就提交成功，是就重试整个事务。
+  - 通过版本号或时间戳来实现，无需锁。
+
+#### 行级锁
+
+下面的锁粒度从小到大。
+
+- 记录锁（Record Locks）：索引记录上的锁，一种行级锁。即使定义的表没有索引，InnoDB 创建一个隐藏的聚簇索引，并使用该索引进行记录锁定。
+- 间隙锁（Gap Locks）：非唯一索引键之间（不含）的间隙上的锁。间隙可能是一个左开区间、右开区间或一个闭合区间等。
+  - 持有间隙锁时，间隙范围内的记录无法被其他事务插入或更改。
+- Next-Key Locks：记录锁+间隙锁。
+- 插入意向锁（Insert Intention Locks）：一种特殊的间隙锁，表明事务打算在某个间隙中插入一条新记录。
+  - 同一个间隙上的插入意向锁之间是兼容的，只有在实际插入时执行冲突检测。
+
+#### 锁等待和超时
+
+- 锁等待：当一个事务需要获取一个已经被其他事务占用的资源时，就会发生锁等待。
+- 锁超时：当一个事务在等待获取锁时，如果超过了一定的时间，就会发生锁超时。
+  - 查看会话锁超时：`show variables like 'innodb_lock_wait_timeout';`
+  - 查看全局锁超时：`show global variables like 'innodb_lock_wait_timeout'`;
+  - 设置：`set [global|session] innodb_lock_wait_timeout=30`，默认 50，单位秒。
+  - 超时错误：`ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction`
+
+### 事务中的读取问题
+
+在事务并发时，可能出现读取脏读、不可重复读和幻读的问题。
+
+#### 脏读
+
+脏读发生在一个事务读取了另一个未提交事务所修改的数据。如果该修改事务回滚，那么读取到的数据就是无效的或“脏”的。
+
+**解决方法**
+
+脏读在 **读未提交（READ UNCOMMITTED）** 隔离级别下会发生，在其他更高的隔离级别下不会发生。
+
+#### 不可重复读
+
+不可重复读是指在一个事务内，两次读取同一行数据却得到了不同的结果，通常是因为在两次读取之间，另一个事务修改了这行数据并提交了。
+
+**解决方法**
+
+不可重复读在 **读已提交（READ COMMITTED）** 及以下隔离级别可能会发生，在更高的隔离级别下不会发生。
+
+#### 幻读
+
+幻读指在一个事务内，两次执行相同的查询却得到了不同的结果集，通常是因为在两次查询之间，另一个事务插入了符合查询条件的新记录。
+
+**解决方法**
+
+幻读在 **可重复读（REPEATABLE READ）** 及以下隔离级别可能会发生，但在串行化（SERIALIZABLE）隔离级别下不会发生。
+另一种常用方式是给记录加上排他锁（实际获得间隙锁）。
+
+## 事务原理
 
 MySQL 事务用到的技术包含日志文件（redo-log 和 undo-log）、锁和 MVCC，通过这些技术来实现 ACID 特性。
 
@@ -341,6 +448,9 @@ TODO
 ```sql
 -- 查看版本
 SELECT VERSION();
+
+-- 查看当前连接ID
+SELECT CONNECTION_ID();
 
 -- 查看支持引擎列表
 SHOW
