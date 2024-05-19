@@ -234,49 +234,6 @@ where name = 'a'
 - IN 的取值范围较大时会导致索引失效。
 - 避免发生隐式转换，比如索引列是`varchar`类型，而条件使用了`int`类型（而且转换后字面量可能不同！）。
 
-## Explain 优化
-
-### Extra 列
-
-Extra 列显示了 MySQL 在执行查询时采取的一些额外操作或优化策略。
-
-#### Using index
-
-表示 SQL 语句中的查询、排序和分组等关键字涉及到的列都能被**所选择的**索引覆盖。
-
-- [验证 Using index](mysql_docs/verify_usingindex.md)
-
-#### Using where
-
-表示存储引擎返回结果后，Server 层需要再次筛选。这通常是因为 WHERE 条件中包含了无法使用索引的列。
-
-- [验证 Using where](./mysql_docs/verify_usingwhere.md)
-
-#### Using filesort
-
-表示 SQL 语句中包含了排序需求，并且排序字段没有被索引覆盖。这种情况下只能由引擎层返回未排序的索引记录给 Server 层，
-后者再调用引擎层接口查询完整记录，再排序，增加了与引擎交互次数。
-
-它与`Using index` 是互斥的，不会同时出现。
-
-- [验证 Using filesort](./mysql_docs/verify_usingfilesort.md)
-
-#### Using temporary
-
-意味着 MySQL 在执行查询时需要创建一个临时表来存储中间结果。这通常发生在查询包含 GROUP BY 和 ORDER BY 子句且这些子句列出不同的列时。
-
-示例：
-
-```sql
--- SQL中的排序字段不在分组字段中，需要临时表来存储分组后的结果，再对其进行排序。
-SELECT product_id, SUM(amount) as total_amount
-FROM sales
-GROUP BY product_id
-ORDER BY sale_date;
-```
-
-- [验证 Using temporary](./mysql_docs/verify_usingtemporary.md)
-
 ## 事务
 
 ### 介绍
@@ -323,6 +280,49 @@ SET SESSION TRANSACTION ISOLATION LEVEL isolation_level;
 ### 实现原理
 
 MySQL 事务用到的技术包含日志文件（redo-log 和 undo-log）、锁和 MVCC，通过这些技术来实现 ACID 特性。
+
+## Explain 优化
+
+### Extra 列
+
+Extra 列显示了 MySQL 在执行查询时采取的一些额外操作或优化策略。
+
+#### Using index
+
+表示 SQL 语句中的查询、排序和分组等关键字涉及到的列都能被**所选择的**索引覆盖。
+
+- [验证 Using index](mysql_docs/verify_usingindex.md)
+
+#### Using where
+
+表示存储引擎返回结果后，Server 层需要再次筛选。这通常是因为 WHERE 条件中包含了无法使用索引的列。
+
+- [验证 Using where](./mysql_docs/verify_usingwhere.md)
+
+#### Using filesort
+
+表示 SQL 语句中包含了排序需求，并且排序字段没有被索引覆盖。这种情况下只能由引擎层返回未排序的索引记录给 Server 层，
+后者再调用引擎层接口查询完整记录，再排序，增加了与引擎交互次数。
+
+它与`Using index` 是互斥的，不会同时出现。
+
+- [验证 Using filesort](./mysql_docs/verify_usingfilesort.md)
+
+#### Using temporary
+
+意味着 MySQL 在执行查询时需要创建一个临时表来存储中间结果。这通常发生在查询包含 GROUP BY 和 ORDER BY 子句且这些子句列出不同的列时。
+
+示例：
+
+```sql
+-- SQL中的排序字段不在分组字段中，需要临时表来存储分组后的结果，再对其进行排序。
+SELECT product_id, SUM(amount) as total_amount
+FROM sales
+GROUP BY product_id
+ORDER BY sale_date;
+```
+
+- [验证 Using temporary](./mysql_docs/verify_usingtemporary.md)
 
 ## SQL 语句的执行过程
 
