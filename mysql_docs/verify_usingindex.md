@@ -12,7 +12,7 @@
 **官方文档**
 
 在[MySQL 5.7 官方文档 Extra](https://dev.mysql.com/doc/refman/5.7/en/explain-output.html#explain-extra-information)
-的页面中精确搜索`Using index`关键字，第一个结果就是。
+的页面中精确搜索`Using index`关键字。
 
 ## 准备环境
 

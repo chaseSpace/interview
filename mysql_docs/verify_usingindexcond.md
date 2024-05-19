@@ -34,7 +34,7 @@
 **官方文档**
 
 在[MySQL 5.7 官方文档 Extra](https://dev.mysql.com/doc/refman/5.7/en/explain-output.html#explain-extra-information)
-的页面中精确搜索`Using index condition`关键字，第一个结果就是。
+的页面中精确搜索`Using index condition`关键字。
 
 ## 准备环境
 
@@ -244,7 +244,7 @@ WHERE age > 80;
 ```
 
 > [!NOTE]
-range 查询还包括 Between 和 Like 这样的运算符，示例省略。。
+> range 查询还包括 Between 和 Like 这样的运算符，示例省略。。
 
 第三种：使用联合唯一索引+range 查询
 
