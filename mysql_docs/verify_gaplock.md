@@ -47,16 +47,18 @@ mysql> SELECT @@transaction_isolation;
 执行下面的 sql 创建测试表：
 
 ```sql
+CREATE DATABASE IF NOT EXISTS testdb;
+use testdb;
 -- 注意：必须为条件列建立非唯一索引，否则锁全表，下文会验证
-CREATE TABLE students
+CREATE TABLE students_gap_lock
 (
-    id    INT PRIMARY KEY,
-    name  VARCHAR(50),
-    score INT,
-    key   idx_score(score)
+  id    INT PRIMARY KEY,
+  name  VARCHAR(50),
+  score INT,
+  key   idx_score(score)
 );
 
-INSERT INTO students (id, name, score)
+INSERT INTO students_gap_lock (id, name, score)
 VALUES (1, 'Alice', 85),
        (2, 'Bob', 90),
        (3, 'Carol', 95);
