@@ -308,41 +308,53 @@ GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 - 共享锁（S 锁，Shared Lock）：读锁，允许多个事务同时读，但不允许并发读写（包括获取共享锁的事务）。
 - 排他锁（X 锁，Exclusive Lock）：粒度最大，与其他任何锁互斥，完全占有行，当前事务可以读写，其他事务同一时刻不能读写该行。
-  - 例如，INSERT、UPDATE、DELETE 语句会自动使用排他锁，所以说修改数据的单条 SQL 具有原子性。
+    - 例如，INSERT、UPDATE、DELETE 语句会自动使用排他锁，所以说修改数据的单条 SQL 具有原子性。
 - 意向锁（Intent Locks）：表示事务将要对表中的某些行加锁，主要作用是为了让行级锁和表级锁之间能够协同工作。
-  - 仅 Innodb 支持。
-  - 意向共享锁（IS 锁）：当一个事务打算在某些行上加共享锁时，它会先在表上加一个意向共享锁。
-  - 意向排他锁（IX 锁）：当一个事务打算在某些行上加排他锁时，它会先在表上加一个意向排他锁。
-  - **自动管理**：意向锁由存储引擎自动管理，不能手动获取。
-  - 在为数据行加共享锁 / 排他锁之前，InnoDB 会先获取该表的意向共享/排他锁。
+    - 仅 Innodb 支持。
+    - 意向共享锁（IS 锁）：当一个事务打算在某些行上加共享锁时，它会先在表上加一个意向共享锁。
+    - 意向排他锁（IX 锁）：当一个事务打算在某些行上加排他锁时，它会先在表上加一个意向排他锁。
+    - **自动管理**：意向锁由存储引擎自动管理，不能手动获取。
+    - 在为数据行加共享锁 / 排他锁之前，InnoDB 会先获取该表的意向共享/排他锁。
 
 #### 锁粒度
 
 - 表级锁：锁定整张表，适用于需要对整张表进行操作的场景。
-  - 比如在执行某些 DDL 操作（如 ALTER TABLE）时会使用表级锁。
-  - Innodb 和 MyISAM 支持。
-  - IS 锁、IX 锁和 AUTO-INC 锁都是表级锁。
-  - 显式使用：`LOCK TABLE [tbl_name {READ|WRITE} ...]`
+    - 比如在执行某些 DDL 操作（如 ALTER TABLE）时会使用表级锁。
+    - Innodb 和 MyISAM 支持。
+    - IS 锁、IX 锁和 AUTO-INC 锁都是表级锁。
+    - 显式使用：`LOCK TABLE [tbl_name {READ|WRITE} ...]`
 - 行级锁：锁定单行数据，可以允许其他事务访问不同的行，适用于高并发的应用场景。
-  - InnoDB 支持，是默认锁级别。
-  - S 锁、X 锁、记录锁、间隙锁、临键锁都是行级锁。
+    - InnoDB 支持，是默认锁级别。
+    - S 锁、X 锁、记录锁、间隙锁、临键锁都是行级锁。
 - 页级锁：锁定整页数据，适用于对大量数据进行操作的场景。
 
 #### 锁思想
 
 - 悲观锁：先获取锁，再执行操作。
-  - 可通过 X 锁或 S 锁实现。
+    - 可通过 X 锁或 S 锁实现。
 - 乐观锁：先执行操作，提交时检查数据是否被其他事务更改，否就提交成功，是就重试整个事务。
-  - 通过版本号或时间戳来实现，无需锁。
+    - 通过版本号或时间戳来实现，无需锁。
 
 #### 锁等待和超时
 
 - 锁等待：当一个事务需要获取一个已经被其他事务占用的资源时，就会发生锁等待。
 - 锁超时：当一个事务在等待获取锁时，如果超过了一定的时间，就会发生锁超时。
-  - 查看会话锁超时：`show variables like 'innodb_lock_wait_timeout';`
-  - 查看全局锁超时：`show global variables like 'innodb_lock_wait_timeout'`;
-  - 设置：`set [global|session] innodb_lock_wait_timeout=30`，默认 50，单位秒。
-  - 超时错误：`ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction`
+    - 查看会话锁超时：`show variables like 'innodb_lock_wait_timeout';`
+    - 查看全局锁超时：`show global variables like 'innodb_lock_wait_timeout'`;
+    - 设置：`set [global|session] innodb_lock_wait_timeout=30`，默认 50，单位秒。
+    - 超时错误：`ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction`
+
+#### 死锁
+
+MySQL 死锁（deadlock）是指在数据库中两个或多个事务因为资源竞争而互相等待对方释放锁，导致这些事务无法继续执行的现象，直到事务超时。
+
+##### 必要条件
+
+要形成死锁，必要满足下面几个必要条件。
+
+- 多个事务并发，并且针对相同数据表。
+- 多个互斥锁：每个事务都试图获取多个互斥锁，比如连续更新/插入两条不同的数据。
+- 等待环路：每个事务都在等待另一个事务持有的锁释放，形成了一个锁等待环路。
 
 ### 事务中的读取问题
 
