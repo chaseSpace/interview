@@ -383,6 +383,18 @@ MySQL 死锁（deadlock）是指在数据库中两个或多个事务因为资源
 
 MySQL 事务用到的技术包含日志文件（redo-log 和 undo-log）、锁和 MVCC，通过这些技术来实现 ACID 特性。
 
+### MVCC
+
+todo
+
+### 锁
+
+- [锁原理](./mysql_docs/lock_intro.md)
+
+### redo-log
+
+### undo-log
+
 ## Explain 优化
 
 ### Extra 列
@@ -453,14 +465,15 @@ Mysql 查询性能优化要从三个方面考虑，库表结构优化、索引�
 
 - 优化查询条件：where 条件过滤数据多的放在前面，减少产生的临时表的数据量。
 - 尽量避免`select *`，填写具体需要的字段。
+- 避免隐式转换：将不同类型进行比较或运算时会发现。不仅会导致查询不准确，还可能导致索引失效。
 - 合理使用比较符：
     - 尽量避免使用 !=, <> 和 null 值查询。
     - 对于 or/in/not，也要谨慎使用，也可能导致全表扫描。其中，or 可以改为`union all`；in 可以考虑 between。
     - like 查询确保通配符不在开头，比如`%xx`无法使用索引。
     - 避免使用正则查询。
 - 子句中使用变量时，也会全表扫描。
-    - 因为 SQL 只有在运行时才会解析局部变量，
-可以改为强制查询使用索引：`select id from t FORCE INDEX(索引名) where num=@num`。
+    - 因为 SQL 只有在运行时才会解析局部变量，可以改为强制查询使用索引：
+      `select id from t FORCE INDEX(索引名) where num=@num`。
     - `FORCE INDEX`也可以用在 Explain 发现优化器选择了不合适的索引时手动选择效率最高的索引。
 - 避免在 where 子句中对字段进行表达式操作和函数操作，会导致全表扫描。
     - 表达式示例：`Where price * 1.1 > 100`
