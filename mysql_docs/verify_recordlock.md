@@ -126,19 +126,19 @@ Trx read view will not see trx with id >= 5388, sees < 5388
                 trx_weight: 2
        trx_mysql_thread_id: 2
                  trx_query: NULL
-       trx_operation_state: NULL
-         trx_tables_in_use: 0
-         trx_tables_locked: 1
-          trx_lock_structs: 2
-     trx_lock_memory_bytes: 1136
-           trx_rows_locked: 1
+trx_operation_state: NULL
+trx_tables_in_use: 0
+trx_tables_locked: 1
+trx_lock_structs: 2
+trx_lock_memory_bytes: 1136
+trx_rows_locked: 1
 ...
 1 row in set (0.00 sec)
 ```
 
-### 查看Innodb锁信息
+### 查看 Innodb 锁信息
 
-```
+```plain
 mysql> SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS;
 Empty set, 1 warning (0.00 sec)
 ```

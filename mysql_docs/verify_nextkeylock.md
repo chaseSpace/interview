@@ -66,7 +66,7 @@ VALUES (1, 'Alice', 85),
 
 ## 正例 1：唯一索引+非等值查询
 
-### 事务A
+### 事务 A
 
 ```plain
 BEGIN;
@@ -75,7 +75,7 @@ SELECT * FROM students_rec_lock WHERE id >= 3 FOR UPDATE;
 
 预期锁住间隙`(3, +inf)`。
 
-### 事务B
+### 事务 B
 
 ```plain
 BEGIN;

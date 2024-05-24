@@ -181,7 +181,7 @@ todo
 
 **支持**
 
-RU不支持，RC以上支持。
+RU 不支持，RC 以上支持。
 
 **退化**
 
@@ -199,7 +199,7 @@ RU不支持，RC以上支持。
 
 **支持**
 
-RU,RC不支持，RR以上支持。
+RU,RC 不支持，RR 以上支持。
 
 - [验证间隙锁](./verify_gaplock.md)
 
@@ -218,7 +218,7 @@ RU,RC不支持，RR以上支持。
 
 **支持**
 
-RU,RC不支持，RR以上支持。
+RU,RC 不支持，RR 以上支持。
 
 - [验证临键锁](./verify_nextkeylock.md)
 

@@ -71,16 +71,16 @@ VALUES (1, 'Alice', 85),
 
 ## 正例 1：唯一索引+等值查询+记录不存在
 
-### 事务A
+### 事务 A
 
 ```plain
 BEGIN;
 SELECT * FROM students_rec_lock WHERE id = 4 FOR UPDATE;
 ```
 
-预期锁住间隙`(4, +inf)`，之所以是正无穷是因为表中最大记录是3，否则取表中存在的比4大的记录作为右边界。
+预期锁住间隙`(4, +inf)`，之所以是正无穷是因为表中最大记录是 3，否则取表中存在的比 4 大的记录作为右边界。
 
-### 事务B
+### 事务 B
 
 ```plain
 BEGIN;
@@ -104,7 +104,7 @@ ROLLBACK;
 
 ### 查看 Innodb 锁信息
 
-在事务B执行被阻塞的SQL时，使用单独的会话查询锁信息，如下。
+在事务 B 执行被阻塞的 SQL 时，使用单独的会话查询锁信息，如下。
 
 ```sql
 SELECT *
@@ -119,7 +119,7 @@ FROM INFORMATION_SCHEMA.INNODB_LOCKS;
 
 如上可知，间隙锁无法通过此命令查看。`SHOW ENGINE INNODB STATUS\G`输出中也显示为记录锁。部分输出为：
 
-```
+```plain
 ------- TRX HAS BEEN WAITING 49 SEC FOR THIS LOCK TO BE GRANTED:
 RECORD LOCKS space id 33 page no 3 n bits 72 index PRIMARY of table `testdb`.`students_rec_lock` trx id 5894 lock_mode X insert intention waiting
 ```
@@ -128,16 +128,16 @@ RECORD LOCKS space id 33 page no 3 n bits 72 index PRIMARY of table `testdb`.`st
 
 非等值查询包括大小于和`like`查询，下面以`>=`为例。
 
-### 事务A
+### 事务 A
 
 ```plain
 BEGIN;
 SELECT * FROM students_rec_lock WHERE id >= 3 FOR UPDATE;
 ```
 
-预期锁住间隙`[3, +inf)`，注意这里包含3是因为Where条件含3。
+预期锁住间隙`[3, +inf)`，注意这里包含 3 是因为 Where 条件含 3。
 
-### 事务B
+### 事务 B
 
 ```plain
 BEGIN;
