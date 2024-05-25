@@ -11,8 +11,6 @@
 
 - 唯一索引+等值查询+命中记录。
 
-注意大前提是，对于读都要显式加锁，对于插入更新是隐式加锁。
-
 ## 准备环境
 
 参照[教程][0]使用 Docker 启动 MySQL 实例。
@@ -39,11 +37,12 @@ mysql> SELECT @@transaction_isolation;
 
 执行下面的 sql 创建测试表：
 
-```sql
-CREATE
-DATABASE IF NOT EXISTS testdb;
-use
-testdb;
+```
+CREATE DATABASE IF NOT EXISTS testdb;
+USE testdb;
+
+-- drop table students_gap_lock;
+
 -- 注意：必须为条件列建立非唯一索引，否则锁全表，下文会验证
 CREATE TABLE students_rec_lock
 (
