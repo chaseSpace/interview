@@ -389,6 +389,10 @@ MySQL 死锁（deadlock）是指在数据库中两个或多个事务因为资源
 - 🔨：幻读在 **可重复读（REPEATABLE READ）** 及以下隔离级别可能会发生，但在串行化（SERIALIZABLE）隔离级别下不会发生。
   另一种常用方式是给记录加上排他锁（实际使用间隙锁）。
 
+#### 快照读
+
+todo
+
 ## 事务原理
 
 MySQL 事务用到的技术包含日志文件（redo-log 和 undo-log）、锁和 MVCC，通过这些技术来实现 ACID 特性。
