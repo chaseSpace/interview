@@ -1,15 +1,21 @@
 # 验证记录锁
 
+内容完成度99%。
+
+> [!NOTE]
+> 本篇文档由笔者结合众多资料亲自验证后编写，但其中仍可能存在错误，请保持怀疑态度阅读。
+
 ## 理论
 
-对于行级锁（包含 S 和 X 锁），有三种应用算法，记录锁是其中一种。
+对于行级锁（包含 S 和 X 锁），有三种应用算法，记录锁是其中一种。对于每一种算法，也都有对应的S和X锁。
 
 记录锁是索引记录上的锁，也是粒度最小最容易理解的锁，冲突概率最低，并发度最高。即使定义的表没有索引，InnoDB
 创建一个隐藏的聚簇索引，并使用该索引进行记录锁定全部记录（相当于表级锁了）。
 
 **使用的时机**
 
-- 主键或唯一索引+等值查询+命中记录。
+- 主键或唯一索引+等值查询+记录存在。
+  - 当记录不存在时，将会使用间隙锁，关于这一点请阅读[验证间隙锁](verify_gaplock.md)。
 
 ## 准备环境
 
@@ -58,9 +64,9 @@ VALUES (1, 'Alice', 85),
        (3, 'Carol', 95);
 ```
 
-## 正例 1：行级 X 锁
+## 正例 1：记录锁 X 锁
 
-唯一索引+等值匹配+记录存在。
+X锁指的是使用`FOR UPDATE`修饰语句或增删改语句触发的锁类型。
 
 ### 执行事务 A
 
@@ -149,7 +155,7 @@ Empty set, 1 warning (0.00 sec)
 启动一个新的会话执行事务 B。
 
 ```plain
-BEGIN;
+BEGIN; -- 下面的sql会自动开启事务，所以可省略这行
 SELECT * FROM students_rec_lock WHERE id = 1 FOR UPDATE; -- 阻塞
 UPDATE students_rec_lock SET score = 100 WHERE id = 1; -- 阻塞
 ```
@@ -199,6 +205,9 @@ B 没有在等待锁。
 > [!TIP]
 > 可见，只有在发生**锁等待**的时候才能观察到事务中已持有的行锁所应用的具体算法（记录锁/间隙锁/临键锁之一）。
 
+> [!TIP]
+> `SHOW ENGINE INNODB STATUS\G`命令输出中包含事务中触发锁等待的SQL语句。
+
 ### 再次查看 Innodb 锁信息
 
 ```sql
@@ -222,6 +231,43 @@ FROM INFORMATION_SCHEMA.INNODB_LOCKS t1
 如表所示，发生锁等待（竞争）时，INNODB_LOCKS 表会同时列出参于锁竞争的所有事务。如果列表数目较多，
 可以通过`Where lock_id like '%:33:3:2'`来过滤，当然你要先通过前面介绍的语句来获取发生死锁事务对应锁住的空间、页号和堆编号。
 
-## 正例 2：行级 S 锁
+> [!NOTE]
+> MySQL 8.0.1 起使用 `PERFORMANCE_SCHEMA.DATA_LOCKS` 表替换了 `INFORMATION_SCHEMA.INNODB_LOCKS`。
+> 不过前者的用法稍有不同，比如在事务获取锁时就会展示在前者中，而后者是仅展示发生锁等待的事务。
+> 更多详情参考[官文][data locks]。
 
-TODO
+[data locks]: https://dev.mysql.com/doc/refman/8.0/en/performance-schema-data-locks-table.html
+
+## 正例 2：记录锁 S 锁
+
+S锁指的是使用`LOCK IN SHARE MODE`修饰语句触发的锁类型。
+
+### 执行事务 A
+
+```plain
+BEGIN;
+SELECT * FROM students_rec_lock WHERE id = 1 LOCK IN SHARE MODE;
+```
+
+### 执行事务 B
+
+启动一个新的会话执行事务 B。
+
+```plain
+BEGIN;
+SELECT * FROM students_rec_lock WHERE id = 1 FOR UPDATE; -- 阻塞
+UPDATE students_rec_lock SET score = 100 WHERE id = 1; -- 阻塞
+```
+
+### 查看 Innodb 锁信息
+
+```sql
+SELECT *
+FROM INFORMATION_SCHEMA.INNODB_LOCKS;
++------------------------+-----------------+-----------+-----------+------------------------------+------------+------------+-----------+----------+-----------+
+| lock_id                | lock_trx_id     | lock_mode | lock_type | lock_table                   | lock_index | lock_space | lock_page | lock_rec | lock_data |
++------------------------+-----------------+-----------+-----------+------------------------------+------------+------------+-----------+----------+-----------+
+| 503558:32:3:2          | 503558          | X         | RECORD    | `testdb`.`students_rec_lock` | PRIMARY    |         32 |         3 |        2 | 1         |
+| 281750090287840:32:3:2 | 281750090287840 | S         | RECORD    | `testdb`.`students_rec_lock` | PRIMARY    |         32 |         3 |        2 | 1         |
++------------------------+-----------------+-----------+-----------+------------------------------+------------+------------+-----------+----------+-----------+
+```
