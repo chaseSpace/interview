@@ -7,12 +7,21 @@
 
 ## 理论
 
-记录所 + 间隙锁的组合，锁定一个范围，并且锁定边界记录本身，即**左开右闭区间**，如`(1,5]`。是默认的粒度最大的行锁算法。
+记录所 + 间隙锁的组合，锁定一个范围，并且锁定**右边界**记录本身，即**左开右闭区间**，如`(1,5]`。是默认的粒度最大的行锁算法。
 
 **使用的时机**
 
 - 唯一索引+非等值查询+记录存在；
-- 普通索引+任意查询+记录存在；
+    - 非等值查询包含范围查询和模糊查询，示例以范围查询为主。
+- 普通索引，包含以下情况：
+    - 普通索引 + 等值查询 + 记录存在；
+    - 普通索引 + 非等值查询 + 包含记录；
+    - 普通索引 + 非等值查询 + 不含记录；
+
+**锁范围扩散算法**
+
+当范围匹配的边界记录存在时，直接遵循左开右闭区间规则；当范围匹配的边界记录不存在时，将范围进行左或右扩散，
+直到找到一条存在的记录作为锁范围边界，然后遵循左开右闭区间规则。间隙锁也适用于这个算法。
 
 ## 准备环境
 
@@ -63,8 +72,6 @@ VALUES (1, 'Alice', 85),
 
 ## 正例 1：唯一索引+范围查询+命中边界记录
 
-非等值查询包括大小于和模糊查询。这里使用范围查询，且使用`>=`匹配记录+正无穷。
-
 ### 事务 A
 
 ```
@@ -72,39 +79,35 @@ BEGIN;
 SELECT * FROM students_nk_lock WHERE id >= 4 FOR UPDATE;
 ```
 
-预期锁住范围`[4, 7)`和`[7, +inf)`。
+预期锁住的索引记录范围`({4, 90} -> +inf)`，其中4是id，90是score，含间隙中的记录。
+
+**命中边界记录**
+
+范围的左边界记录刚好存在，对于唯一索引，不会进行左扩散。
 
 ### 事务 B
 
 ```plain
 BEGIN;
 
--- 不锁 (-inf, 1]
-INSERT INTO students_nk_lock VALUES(0, 'Dave', 84); -- 非阻塞
+-- 不锁 (-inf -> {4, 90})
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 85); -- 非阻塞
+INSERT INTO students_nk_lock VALUES(3, 'Dave', 90); -- 非阻塞
 UPDATE students_nk_lock SET id=1 WHERE id=1; -- 非阻塞
 
--- 不锁 (1, 4)
-INSERT INTO students_nk_lock VALUES(2, 'Dave', 84); -- 非阻塞
-INSERT INTO students_nk_lock VALUES(3, 'Dave', 84); -- 非阻塞
-
--- 锁住 [4, 7)
-INSERT INTO students_nk_lock VALUES(5, 'Dave', 84); -- 阻塞
+-- 锁住 [{4,90} -> +inf)
+INSERT INTO students_nk_lock VALUES(5, 'Dave', 90); -- 阻塞
+INSERT INTO students_nk_lock VALUES(8, 'Dave', 90); -- 阻塞
 UPDATE students_nk_lock SET id=4 WHERE id=4; -- 阻塞
 UPDATE students_nk_lock SET id=7 WHERE id=7; -- 阻塞
-
--- 锁住 [7, 10)
-INSERT INTO students_nk_lock VALUES(8, 'Dave', 84); -- 阻塞
-INSERT INTO students_nk_lock VALUES(9, 'Dave', 84); -- 阻塞
-
--- 锁住 [10, +inf)
-INSERT INTO students_nk_lock VALUES(11, 'Dave', 84); -- 阻塞
+UPDATE students_nk_lock SET id=10 WHERE id=10; -- 阻塞
 
 ROLLBACK;
 ```
 
-## 正例 2：唯一索引+范围查询2+命中边界记录
+## 正例 2：唯一索引+范围查询：BETWEEN+命中边界记录
 
-本例中的范围查询使用`BETWEEN`，使用两个存在记录作为命中记录。
+本例中的范围查询使用`BETWEEN`。
 
 ### 事务 A
 
@@ -113,138 +116,66 @@ BEGIN;
 SELECT * FROM students_nk_lock WHERE id BETWEEN 4 and 7 FOR UPDATE;
 ```
 
-预期锁住范围`[4, 7]`、`[7, 10]`，包含了右侧间隙记录10。
+预期锁住范围`[{4, 90} -> {10, 100}]`。
+
+> [!IMPORTANT]
+> 这里锁范围包含左边界`{4, 90}`是因为条件包含，包含右边界`{10, 100}`是因为临键锁的左开右闭规则。唯一索引和普通索引都会进行右扩散。
 
 ### 事务 B
 
 ```
 BEGIN;
 
--- 不锁 (-inf, 1)
-INSERT INTO students_nk_lock VALUES(0, 'Dave', 84); -- 非阻塞
+-- 不锁 (-inf -> {4,90})
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 85); -- 非阻塞
+INSERT INTO students_nk_lock VALUES(3, 'Dave', 90); -- 非阻塞
+UPDATE students_nk_lock SET id=1 WHERE id=1; -- 非阻塞
 
--- 不锁 [1, 4)
-INSERT INTO students_nk_lock VALUES(2, 'Dave', 84); -- 非阻塞
-UPDATE students_nk_lock SET id=1 where id = 1; -- 非阻塞
+-- 锁住 [{4,90} -> {10,100}]
+INSERT INTO students_nk_lock VALUES(4, 'Dave', 89); -- 阻塞
+INSERT INTO students_nk_lock VALUES(5, 'Dave', 90); -- 阻塞
+INSERT INTO students_nk_lock VALUES(7, 'Dave', 96); -- 阻塞
+INSERT INTO students_nk_lock VALUES(8, 'Dave', 96); -- 阻塞
+UPDATE students_nk_lock SET id=4 WHERE id=4; -- 阻塞
+UPDATE students_nk_lock SET id=7 WHERE id=7; -- 阻塞
+UPDATE students_nk_lock SET id=10 WHERE id=10; -- 阻塞
 
--- 锁住 [4, 7]
-INSERT INTO students_nk_lock VALUES(5, 'Dave', 84); -- 阻塞
-UPDATE students_nk_lock SET id=4 where id = 4; -- 阻塞
-UPDATE students_nk_lock SET id=7 where id = 7; -- 阻塞
-
--- 锁住 (7, 10]
-INSERT INTO students_nk_lock VALUES(8, 'Dave', 84); -- 阻塞
-UPDATE students_nk_lock SET id=10 where id = 10; -- 阻塞
-
--- 不锁 (10, +inf)
-INSERT INTO students_nk_lock VALUES(11, 'Dave', 84); -- 阻塞
-```
-
-## 正例 3：普通索引+范围查询+未命中边界记录
-
-```
-BEGIN;
-SELECT * FROM students_nk_lock WHERE score > 90 FOR UPDATE;
-```
-
-预期锁住间隙 `(90, +inf)`。如果是`>=90`，将会较大的锁范围，看下个例子。
-
-### 事务B
-
-```
-BEGIN;
-
--- 不锁 (-inf, 85)
-INSERT INTO students_nk_lock VALUES(5, 'Dave', 84); -- 非阻塞
-
--- 不锁 [85, 90]
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 86); -- 非阻塞
-UPDATE students_nk_lock SET score = 85 WHERE score=85; -- 非阻塞
-UPDATE students_nk_lock SET score = 90 WHERE score=90; -- 非阻塞
-
--- 锁住 (90, +inf)
-INSERT INTO students_nk_lock VALUES(7, 'Dave', 91); -- 阻塞
-UPDATE students_nk_lock SET score = 95 WHERE score=95; -- 阻塞
-UPDATE students_nk_lock SET score = 100 WHERE score=100; -- 阻塞
-```
-
-## 正例 4：普通索引+范围查询2+命中边界记录
-
-### 事务A
-
-```
-BEGIN;
-SELECT * FROM students_nk_lock WHERE score >=90 FOR UPDATE;
-```
-
-预期锁住90左右的全部范围，包含数据。
-
-### 事务B
-
-```
-BEGIN;
-
--- 锁住 (-inf, 85)
-INSERT INTO students_nk_lock VALUES(5, 'Dave', 84); -- 阻塞
-
--- 锁住 [85, 90)
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 86); -- 阻塞
-UPDATE students_nk_lock SET score = 85 WHERE score=85; -- 阻塞
-
--- 锁住 [90, +inf)
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 91); -- 阻塞
-UPDATE students_nk_lock SET score = 90 WHERE score=90; -- 阻塞
-UPDATE students_nk_lock SET score = 95 WHERE score=95; -- 阻塞
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 96); -- 阻塞
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 101); -- 阻塞
+-- 不锁 ({10,100} -> +inf)
+INSERT INTO students_nk_lock VALUES(11, 'Dave', 100); -- 非阻塞
 
 ROLLBACK;
 ```
 
-结果有点逆天。
-
-## 正例 5：普通索引+范围查询3+命中边界记录
-
-### 事务A
+## 正例 3：普通索引+范围查询+命中边界记录
 
 ```
 BEGIN;
-SELECT * FROM students_nk_lock WHERE score BETWEEN 90 and 95 FOR UPDATE;
+SELECT * FROM students_nk_lock WHERE score >= 90 FOR UPDATE;
 ```
 
-预期锁住90和95分别的左右侧间隙，包含边界数据。
+范围边界记录不存在，按照右扩散规则，预期锁住范围`({1, 85} -> +inf)`。
+
+**命中边界记录**
+
+范围的左边界记录刚好存在，对于普通索引，会进行左扩散，即从`{4, 90}`扩散到`{1, 85}`。
 
 ### 事务B
 
 ```
 BEGIN;
 
--- 不锁 (-inf, 85]
-INSERT INTO students_nk_lock VALUES(5, 'Dave', 84); -- 非阻塞
-UPDATE students_nk_lock SET score = 85 WHERE score=85; -- 非阻塞
+-- 锁住 (-inf -> {1, 85}]
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 83); -- 非阻塞
+INSERT INTO students_nk_lock VALUES(3, 'Dave', 84); -- 非阻塞
+UPDATE students_nk_lock SET score=85 WHERE score=85; -- 非阻塞
 
--- 锁住 (85, 90]
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 86); -- 阻塞
-UPDATE students_nk_lock SET score = 90 WHERE score=90; -- 阻塞
+-- 锁住 [{1, 85} -> +inf)
+INSERT INTO students_nk_lock VALUES(5, 'Dave', 85); -- 阻塞
 
--- 锁住 (90, 95]
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 91); -- 阻塞
-UPDATE students_nk_lock SET score = 95 WHERE score=95; -- 阻塞
-
--- 锁住 (95, 100]
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 96); -- 阻塞
-UPDATE students_nk_lock SET score = 100 WHERE score=100; -- 阻塞
-
--- 不锁 (100, +inf)
-INSERT INTO students_nk_lock VALUES(6, 'Dave', 101); -- 非阻塞
 ```
 
-## 小结
+正在寻找原因！
 
-- 唯一索引+正无穷查询+命中边界记录：锁住记录及正无穷范围；
-- 唯一索引+有限范围查询+未命中边界记录：锁住记录及其右侧间隙，含边界数据；
-- 普通索引+正无穷查询+未命中边界记录：锁住记录及正无穷范围；
-- 普通索引+正无穷查询+命中边界记录：锁住整个索引（原因未知？）；
-- 普通索引+有限范围查询+命中边界记录：锁住记录及其两侧间隙，含边界数据；
+## 正例 4：普通索引+范围查询：BETWEEN+命中边界记录
 
-规律不明显，但普通索引的临键锁范围显然大于唯一索引。
+todo
