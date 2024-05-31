@@ -20,7 +20,7 @@
 
 **锁范围扩散算法**
 
-当范围匹配的边界记录存在时，直接遵循左开右闭区间规则；当范围匹配的边界记录不存在时，将范围进行左或右扩散，
+当范围查询条件匹配的边界记录存在时，直接遵循左开右闭区间规则；当范围匹配的边界记录不存在时，将范围进行左或右扩散，
 直到找到一条存在的记录作为锁范围边界，然后遵循左开右闭区间规则。间隙锁也适用于这个算法。
 
 ## 准备环境
@@ -146,7 +146,46 @@ INSERT INTO students_nk_lock VALUES(11, 'Dave', 100); -- 非阻塞
 ROLLBACK;
 ```
 
-## 正例 3：普通索引+范围查询+命中边界记录
+## 正例 3：普通索引+等值查询+记录存在
+
+普通索引的等值查询，范围边界记录存在，使用左侧临键锁+右侧间隙锁。
+
+> [!NOTE]
+> 若是唯一索引+记录存在，则不会扩散，由默认临键锁进化为记录锁。也就是说，只要记录不存在或者是普通索引，都会导致锁范围扩散，
+> 即最终使用间隙锁或临键锁或二者都有。
+
+### 事务A
+
+```
+BEGIN;
+SELECT * FROM students_nk_lock WHERE score = 90 FOR UPDATE;
+```
+
+预期锁住范围`({1, 85} -> {7, 95})`。
+
+### 事务B
+
+```
+BEGIN;
+
+-- 不锁 (-inf -> {1, 85}]
+INSERT INTO students_nk_lock VALUES(-1, 'Dave', 84); -- 非阻塞
+INSERT INTO students_nk_lock VALUES(0, 'Dave', 85); -- 非阻塞
+UPDATE students_nk_lock SET score=85 WHERE score=85; -- 阻塞
+
+-- 锁住 ({1, 85} -> {7, 95})
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 85); -- 阻塞，{2,85}会进入间隙
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 91); -- 阻塞
+UPDATE students_nk_lock SET score=90 WHERE score=90; -- 阻塞
+
+-- 不锁 [{7, 95} -> +inf)
+INSERT INTO students_nk_lock VALUES(8, 'Dave', 95); -- 非阻塞
+UPDATE students_nk_lock SET score=95 WHERE score=95; -- 阻塞
+```
+
+## 正例 4：普通索引+范围查询+命中边界记录
+
+### 事务A
 
 ```
 BEGIN;
@@ -165,17 +204,43 @@ SELECT * FROM students_nk_lock WHERE score >= 90 FOR UPDATE;
 BEGIN;
 
 -- 锁住 (-inf -> {1, 85}]
-INSERT INTO students_nk_lock VALUES(2, 'Dave', 83); -- 非阻塞
-INSERT INTO students_nk_lock VALUES(3, 'Dave', 84); -- 非阻塞
-UPDATE students_nk_lock SET score=85 WHERE score=85; -- 非阻塞
+INSERT INTO students_nk_lock VALUES(0, 'Dave', 83); -- 阻塞
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 84); -- 阻塞
+UPDATE students_nk_lock SET score=85 WHERE score=85; -- 阻塞
 
 -- 锁住 [{1, 85} -> +inf)
 INSERT INTO students_nk_lock VALUES(5, 'Dave', 85); -- 阻塞
-
+INSERT INTO students_nk_lock VALUES(5, 'Dave', 91); -- 阻塞
+INSERT INTO students_nk_lock VALUES(11, 'Dave', 101); -- 阻塞
 ```
 
-正在寻找原因！
+为什么锁了全表？
 
-## 正例 4：普通索引+范围查询：BETWEEN+命中边界记录
+## 正例 5：普通索引+范围查询：BETWEEN+命中边界记录
 
-todo
+### 事务A
+
+```
+BEGIN;
+SELECT * FROM students_nk_lock WHERE score between 85 and 90 FOR UPDATE;
+```
+
+### 事务B
+
+```
+BEGIN;
+
+-- 不锁 (-inf -> {1, 85}]
+INSERT INTO students_nk_lock VALUES(-1, 'Dave', 84); -- 非阻塞
+INSERT INTO students_nk_lock VALUES(0, 'Dave', 85); -- 非阻塞
+UPDATE students_nk_lock SET score=85 WHERE score=85; -- 阻塞
+
+-- 锁住 ({1, 85} -> {7, 95})
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 85); -- 阻塞，{2,85}会进入间隙
+INSERT INTO students_nk_lock VALUES(2, 'Dave', 91); -- 阻塞
+UPDATE students_nk_lock SET score=90 WHERE score=90; -- 阻塞
+
+-- 不锁 [{7, 95} -> +inf)
+INSERT INTO students_nk_lock VALUES(8, 'Dave', 95); -- 非阻塞
+UPDATE students_nk_lock SET score=95 WHERE score=95; -- 阻塞
+```

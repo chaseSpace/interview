@@ -47,7 +47,7 @@ mysql> SELECT @@transaction_isolation;
 CREATE DATABASE IF NOT EXISTS testdb;
 USE testdb;
 
--- drop table students_gap_lock;
+-- drop table students_rec_lock;
 
 -- 注意：必须为条件列建立非唯一索引，否则锁全表，下文会验证
 CREATE TABLE students_rec_lock
