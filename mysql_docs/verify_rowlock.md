@@ -93,7 +93,7 @@ VALUES (5, 'Alice', 5),
 > [!NOTE]
 > 这里讨论的唯一索引包含了主键索引，它们的锁行为一致。
 
-### 案例1：唯一索引+等于查询+命中记录
+### 案例1：唯一索引+等值查询+命中记录
 
 下面开始测试记录锁。
 
@@ -170,7 +170,119 @@ ROLLBACK;
 
 ## 实战：间隙锁
 
+间隙锁只锁住索引记录之间的空隙，不含记录。当然，根据查询条件不同，这个空隙也可能包含正无穷和负无穷。
+间隙锁的锁范围大于记录锁，一般在记录不存在时应用。查询条件包含等值查询和范围查询。
+
+### 案例1：唯一索引+等值查询+未命中记录
+
+#### 事务 A
+
+```plain
+BEGIN;
+SELECT * FROM students_lock WHERE id = 7 FOR UPDATE;
+```
+
+#### 事务 B
+
+```
+BEGIN;
+
+-- 不锁(-inf, 5] 和 [10, +inf)
+SELECT * FROM students_lock WHERE id = 5 FOR UPDATE; -- 非阻塞
+SELECT * FROM students_lock WHERE id = 10 FOR UPDATE; -- 非阻塞
+INSERT INTO students_lock VALUES(4, 'Dave', 4); -- 非阻塞
+INSERT INTO students_lock VALUES(11, 'Dave', 11); -- 非阻塞
+
+-- 锁住(5, 10)中的间隙
+INSERT INTO students_lock VALUES(6, 'Dave', 6); -- 阻塞
+INSERT INTO students_lock VALUES(8, 'Dave', 8); -- 阻塞
+```
+
+首先根据原则1使用临键锁锁住`(5, 10]`，同时又根据**优化2**退化为间隙锁。
+
+### 案例2：普通索引+等值查询+未命中记录
+
+此案例和案例1区别不大，但注意锁应用的索引对象不同。
+
+#### 事务 A
+
+```plain
+BEGIN;
+SELECT * FROM students_lock WHERE score = 7 FOR UPDATE;
+```
+
+#### 事务 B
+
+```
+BEGIN;
+
+-- 不锁score索引上的(-inf, 5] 和 [10, +inf)
+SELECT * FROM students_lock WHERE score = 5 FOR UPDATE;
+SELECT * FROM students_lock WHERE score = 10 FOR UPDATE;
+INSERT INTO students_lock VALUES(4, 'Dave', 4); -- 非阻塞
+INSERT INTO students_lock VALUES(11, 'Dave', 11); -- 非阻塞
+
+-- 锁住score索引上的(5, 10)中的间隙
+INSERT INTO students_lock VALUES(6, 'Dave', 6); -- 阻塞
+INSERT INTO students_lock VALUES(8, 'Dave', 8); -- 阻塞
+```
+
+### 案例3：普通索引+范围查询+未命中记录
+
+#### 事务 A
+
+```plain
+BEGIN;
+SELECT * FROM students_lock WHERE score > 20 FOR UPDATE;
+```
+
+#### 事务 B
+
+```
+BEGIN;
+
+-- 不锁(-inf, 20]
+SELECT * FROM students_lock WHERE score = 5 FOR UPDATE; -- 非阻塞
+SELECT * FROM students_lock WHERE score = 20 FOR UPDATE; -- 非阻塞
+INSERT INTO students_lock VALUES(18, 'Dave', 18);  -- 非阻塞
+INSERT INTO students_lock VALUES(19, 'Dave', 20);  -- 非阻塞*
+
+-- 锁住(20, +inf)
+INSERT INTO students_lock VALUES(21, 'Dave', 20); -- 阻塞*
+INSERT INTO students_lock VALUES(21, 'Dave', 21); -- 阻塞
+```
+
+#### 反直觉的情况
+
+**为什么锁住{21, 20}，却没有锁住{19, 20}？**
+
+上面打了`*`的语句是需要注意的项。为什么score列都是20，但不同的id值却有不同的锁定情况。这不是随机的，是我们之前没有正确理解
+**行锁只针对索引记录**这句话。
+
+不论是唯一索引还是普通索引，行级锁都是锁的**索引记录**，而不仅仅是索引列本身。
+我们应当知道，普通索引也是一颗B+树，所有索引记录都存在叶子节点中，并且通过指针有序串联起来，
+**顺序上先按照索引列排序，相同值再按照主键id排序**。其中每个二级索引记录包含的是主键id和索引值，不含其它字段。
+
+在事务B开始前，表中的`idx_score`二级索引记录排列顺序如下：
+
+```
+-- idx_score索引不含name列，这里忽略。
+...
+{10, 10}
+{15, 15}
+{20, 20}
+```
+
+当我们说锁住`(20, +inf)`时，实际上说的是锁定`({id=21, score=21}, +inf)`。也就是说，这里必须将索引中的全部字段拿出来讨论。那么根据索引记录排序规则，
+`{19, 20}`不会进入前述间隙，而`{21, 20}`一定会进入前述间隙。
+
 ## 实战：临键锁
+
+临键锁由记录锁和间隙锁组成，锁定的范围是一个左开右闭区间，例如`(5, 10]`。它是三种算法中粒度最大，也是最复杂（也还好）的算法。
+
+### 案例1：唯一索引+范围查询+命中记录
+
+#### 事务 A
 
 todo
 
