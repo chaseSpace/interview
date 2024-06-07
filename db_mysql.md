@@ -407,7 +407,7 @@ todo
 
 ### 锁
 
-- [锁原理](./mysql_docs/lock_intro.md)
+请阅读笔者的专篇文章 [锁原理](./mysql_docs/lock_intro.md)。
 
 ### redo-log
 
