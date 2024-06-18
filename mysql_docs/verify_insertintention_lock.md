@@ -58,7 +58,7 @@ VALUES (5, 'Alice', 5),
 
 ### 事务 A
 
-```
+```plain
 BEGIN;
 
 INSERT INTO students_lock VALUES(6, 'Alice', 6);
@@ -68,7 +68,7 @@ INSERT INTO students_lock VALUES(6, 'Alice', 6);
 
 ### 事务 B
 
-```
+```plain
 BEGIN;
 
 -- 不锁相同间隙内的插入
@@ -90,7 +90,7 @@ ROLLBACK;
 
 事务 A：
 
-```
+```plain
 BEGIN;
 
 DELETE FROM students_lock WHERE id > 5; 
@@ -98,7 +98,7 @@ DELETE FROM students_lock WHERE id > 5;
 
 事务 B：
 
-```
+```plain
 BEGIN;
 
 INSERT INTO students_lock VALUES(6, 'Alice', 6); -- 阻塞
@@ -108,7 +108,7 @@ INSERT INTO students_lock VALUES(6, 'Alice', 6); -- 阻塞
 
 阻塞时，观察事务 B 的等待状态：
 
-```
+```plain
 > SHOW ENGINE INNODB STATUS;
 
 ...
