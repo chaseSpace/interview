@@ -276,6 +276,7 @@ update dead_lock set name='a' where id=1; -- ERROR 1213 (40001): Deadlock found 
 - 同个事务内，确保以相同顺序对数据行加锁；
 - 减少SQL条数，尽量合并多个插入语句；
 - 使用RC隔离级别，同时使用`FOR UPDATE`和`LOCK IN SHARE MODE`避免幻读；
+    - 因为RC级别没有间隙锁和临键锁，能大大降低锁冲突概率。
 
 ### 排查死锁
 
