@@ -396,7 +396,8 @@ MySQL 死锁（deadlock）是指在数据库中两个或多个事务因为资源
 
 **大致原理**
 
-快照读基于 MVCC 技术实现。事务开始时，Innodb 会创建一个一致性视图（Consistent Read View），这个视图记录了当前活跃事务的状态和事务 ID 列表。
+快照读基于 MVCC 技术实现。事务开始时，Innodb 会创建一个一致性视图（Consistent Read View），这个视图记录了当前活跃事务的状态和事务
+ID 列表。
 事务在读取数据时，基于这个视图来决定允许读取哪些版本的数据。
 
 **不同隔离级别的快照读情况**
@@ -456,19 +457,38 @@ Extra 列显示了 MySQL 在执行查询时采取的一些额外操作或优化�
 
 #### Using temporary
 
-意味着 MySQL 在执行查询时需要创建一个临时表来存储中间结果。这通常发生在查询包含 GROUP BY 和 ORDER BY 子句且这些子句列出不同的列时。
+意味着 MySQL 在执行查询时需要创建一个临时表来存储中间结果。
 
-示例：
+这通常发生以下几种情况：
+
+- 首先在查询包含 `GROUP BY` 子句，其次 SQL 包含了`ORDER BY`子句，但排序字段没有出现在分组字段中；
+  - 另一种情况是 SELECT 字段也不在分组字段中。
+
+示例 1：
 
 ```sql
 -- SQL中的排序字段不在分组字段中，需要临时表来存储分组后的结果，再对其进行排序。
-SELECT product_id, SUM(amount) as total_amount
+SELECT product_id as total_amount
 FROM sales
 GROUP BY product_id
 ORDER BY sale_date;
 ```
 
-- [验证 Using temporary](./mysql_docs/verify_usingtemporary.md)
+注意，mysql v5.7 以上默认`sql_mode=ONLY_FULL_GROUP_BY`，即不允许 SQL 出现上面这种情况，所以需要手动修改`sql_mode`，修改方式如下：
+
+```plain
+set session sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+
+
+# 修改配置文件 my.ini
+[mysqld]
+sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+```
+
+#### Using index condition
+
+- [验证 index condition](./mysql_docs/verify_usingindexcond.md)
 
 ## 查询优化
 
@@ -529,15 +549,89 @@ Mysql 查询性能优化要从三个方面考虑，库表结构优化、索引�
 
 ## 什么是 PrepareStatement
 
-todo
+通常一条 SQL 发送到 DB 后，会大致经过以下步骤：
 
-### 更快
+- 词法和语义解析
+- 优化 sql 语句，制定执行计划
+- 执行并返回结果
+
+其中前面两步是每次都要执行的，简称为编译阶段。所以对于执行大量重复的 SQL 很不友好，所以有了 PrepareStatement。
+MySQL 支持提前设置一条预编译 SQL，后续可以直接执行预编译 SQL（仅传入参数），从而节省了编译时间。
+
+### 示例
+
+```plain
+prepare ins from 'insert into t1 values (?, ?, ?)';
+
+set @a = 1,@b = 1,@c = 1;
+execute ins using @a,@b,@c;
+
+# 释放预编译语句
+deallocate prepare ins;
+```
+
+**注意**：MySQL 中的预编译语句作用域是 session 级，不能设置全局性的预编译语句。
+
+> [!NOTE]
+> 可以通过`set @@global.max_prepared_stmt_count=1`设置全局最大预编译语句数量，v5.7 默认值 16382。
 
 ### 更安全
 
+由于 SQL 已经被预编译在 MySQL 中，后续传入的参数即使包含 SQL 关键字也只会被当做纯数据处理，因此避免了 SQL 注入攻击。
+SQL 之所以能被注入，最主要的原因就是它在以常规方式执行时，数据和代码（指令）是混合的。
+
 ## 为什么不建议单表超过 2000w 数据
 
-TODO
+回答这个问题首先要弄清楚 MySQL 的查询过程，因为不建议的原因是超过 2000w 数据量会导致查询性能迅速降低。
+
+**简单的回答**：单表超过 2000w 后，会引起索引和数据存储结构 B+tree 的高度增加，延长了索引的搜索路径，增加了磁盘 IO
+次数，进而导致了性能下降。
+
+### 索引结构
+
+MySQL 采用 B+树结构来存储数据和索引，索引分为聚簇索引和二级索引。其中聚簇索引也叫主键索引，它的非叶节点存储主键值和页号映射关系，而叶节点存储的是完整的行数据。
+二级索引的非叶节点存储的是索引值和页号映射关系，而叶节点存储的是主键 ID。若使用二级索引查找数据，最坏的情况下，在找到索引值后，还会根据主键
+ID 在聚簇索引中查找数据（简称回表）。
+
+**查找过程**
+
+由于 MySQL 的数据或索引物理文件内部都是按页组织的，每个页里面才是存储的最终数据。所以索引树种存储的是索引值和页号映射关系，MySQL
+在找到匹配条件的索引值后，
+还需要根据页号继续查找数据，而每次查页都是一次磁盘 IO。当然，如果为 DB 分配的内存够多，刚好这些页都在内存中，那么就不会免去这部分磁盘
+IO，但我们暂不考虑这个情况。
+
+假设索引树高度为 3，那么几乎每次查找数据，都会需要 3 次磁盘 IO，因为有页缓存机制，所以我们感知不明显。
+
+**根据页属性计算 2000w 需要的索引树高度**
+
+MySQL 默认是 16K 的页面，抛开它的配置 header，大概剩下 15K。非叶节点存储的是主键和页号（主键 8byte+页号固定 4byte=12byte），
+因此，非叶子节点的单个索引页面可放 15*1024/12=1280 条数据；叶子节点存储行数据（算作 1K），因此，叶子节点的单个索引页面可放 15
+条数据。
+
+已知 B+树的总数据行数与树高度存在以下关系：
+
+- 非叶子节点内指向其他页的数量为 x
+- 叶子节点内能容纳的数据行数为 y
+- B+ 数的高度为 z
+
+有公式：total=x^(z-1) *y，所以，三层的 B+树能容纳：(1280^2)*15=24576000 条数据。即超过这个数据量，索引树的高度会增加到 4。
+
+当单行数据大小为 5k 时（大宽表），三层 B+树只能容纳不到 500w 条数据。所以，在保持相同的层级（相似查询性能）的情况下，在行数据大小不同的情况下，
+其实这个最大建议值也是不同的。
+
+### 评估查询性能
+
+在使用以前的机械磁盘时，一次磁盘 IO 随机读取时间是 10ms 左右，若是 SSD，则会提高到 100 微秒的级别。所以在 3 层 B+树高度，
+数据行不大（如 1k）时，一次单表索引查询的耗时最多也就 30ms 左右，在利用缓存时提升至 10ms
+内。只是说，在进行多表或回表查询时，这个耗时会明显增加，可能到上百毫秒；
+无索引时，性能会明显下降到秒级别。
+
+其实这种性能在大部分的业务中都是可以接受的。
+
+### 评估写入性能
+
+我们不能重视查询而忽略了写入性能，因为写入性能也是许多业务数据库的关键。数据写入可能会导致 B+树的节点分裂或合并，
+在这种时候，Innodb 采用乐观锁机制控制并发写入。当数据量较多时，可能会触发频繁的索引结构变更，从而导致写入性能下降。
 
 ## 常用 SQL
 

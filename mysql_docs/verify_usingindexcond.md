@@ -12,7 +12,7 @@
 - 查询使用了二级索引（包含单列索引和联合索引）或联合唯一索引。
 - 表连接 type 为`range`、 `ref_or_null`、`ref`, 以及`eq_ref`方式的查询，以下从效率最差到效率最好的方式排序。
     - `range`查询是指使用 = 、 <> 、 > 、 >= 、 < 、 <= 、 IS (NOT) NULL 、 <=> 、 BETWEEN 、 LIKE 或 IN()
-      其中之一的运算符与**常量**比较。
+      其中之一的运算符与**常量**比较（不含`=`）。
     - `ref_or_null` 是指 Where 语句中对索引列进行等值比较时，且额外包含为 NULL 值的过滤条件，
 例如`WHERE key_column=expr OR key_column IS NULL`。
     - `ref`是指使用了非主键或唯一类型的索引，并且过滤行数占比较高。
