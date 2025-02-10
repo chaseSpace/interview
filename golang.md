@@ -439,7 +439,7 @@ Channel 内部虽然使用了一把互斥锁，但该锁是一把基于 CAS 和�
 
 ### 基本特性
 
-Channel 支持带缓冲和不带缓冲的读写模式。不管哪种模式，当消费者来不及消费数据时，生产者无法继续发送数据（阻塞），
+Channel 支持带缓冲和不带缓冲的读写模式。不管哪种模式，当消费者来不及消费数据时，生产者都无法继续发送数据（阻塞），
 直到消费者消费完 Channel 内的数据或 Channel 内的数据量小于缓冲区大小。
 
 ### 实现原理
@@ -558,7 +558,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 - 当缓冲区存在空余空间时，将发送的数据写入 Channel 的缓冲区；
 - 当不存在缓冲区或者缓冲区已满时，等待其他 Goroutine 从 Channel 接收数据；
 
-##### 直接发送
+##### 1. 直接发送
 
 如果目标 Channel 没有被关闭并且已经有处于读等待的 Goroutine，那么 `runtime.chansend` 会从接收队列 `recvq` 中取出最先陷入等待的
 Goroutine 并直接向它发送数据：
@@ -578,7 +578,7 @@ if sg := c.recvq.dequeue(); sg != nil {
 
 [runtime.send]: https://github.com/golang/go/blob/41d8e61a6b9d8f9db912626eb2bbc535e929fefc/src/runtime/chan.go#L292
 
-##### 缓冲区有空余
+##### 2. 缓冲区有空余
 
 如果创建的 Channel 包含缓冲区并且 Channel 中的数据没有装满，会执行下面这段代码：
 
@@ -607,7 +607,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 > [!NOTE]
 > 注意 channel 的 buf 是一个数组实现的循环队列，所以当 `sendx` 等于 `dataqsiz` 时会重新回到数组开始的位置。
 
-##### 阻塞发送
+##### 3. 阻塞发送
 
 当 Channel 没有接收者能够处理数据时，向 Channel 发送数据会被下游阻塞。当然，我们可以使用 select 非阻塞地往 Channel 发送数据。
 阻塞发送数据会执行下面的代码，简单梳理一下这段代码的逻辑：
@@ -647,16 +647,15 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 函数在最后会返回 true 表示这次我们已经成功向 Channel 发送了数据。
 
-##### 小结
+##### 4. 小结
 
 简单梳理和总结一下使用 `ch <- i` 表达式向 Channel 发送数据时遇到的几种情况：
 
 - 如果当前 Channel 的 `recvq` 上存在已经被阻塞的 Goroutine，那么会直接将数据发送给当前 Goroutine 并将其设置成下一个运行的
   Goroutine；
-- 如果 Channel 存在缓冲区并且其中还有空闲的容量，我们会直接将数据存储到缓冲区 sendx 所在的位置上；
+- 如果没有等待接收者，且 Channel 存在缓冲区并且其中还有空闲的容量，我们会直接将数据存储到缓冲区 sendx 所在的位置上；
 - 如果不满足上面的两种情况，会创建一个 `runtime.sudog` 结构并将其加入 Channel 的 `sendq` 队列中，当前 Goroutine
-  也会陷入阻塞等待其他的协程从
-  Channel 接收数据；
+  也会陷入阻塞等待其他的协程从 Channel 接收数据；
 
 Goroutine 挂起时触发 Goroutine 调度，关键函数是`runtime.goparkunlock`。
 
@@ -947,7 +946,7 @@ Channel 内部使用了以下技术点来完成：
 - 发送数据和接收数据都需要 Channel 级别的**互斥锁**保护
     - 锁是一个乐观锁实现，内部先使用 CAS 操作来尝试获取锁，如果获取失败则使用自旋等待
     - 若自旋几次仍然获取失败，则通过操作系统提供的异步事件通知系统调用来阻塞 G，等待其他协程（释放锁时）调用系统调用通知，避免空耗
-CPU
+      CPU
     - Go 将这些系统调用封装在了几个跨平台的函数中：semacreate/semasleep/semawakeup
     - 在 windows 上的异步事件通知系统调用接口是:
         - _CreateEventA: 创建事件，对应 semacreate
