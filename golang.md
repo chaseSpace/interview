@@ -955,7 +955,7 @@ Channel 内部使用了以下技术点来完成：
 
 ### 问题1：chan内的锁是如何实现的？
 
-chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，内部实现如下：
+chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
 
 ```
 func lock2(l *mutex) {
@@ -1348,3 +1348,6 @@ Other commands:
 
 Type help followed by a command for full documentation.
 ```
+
+
+[lock_sema]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L38
