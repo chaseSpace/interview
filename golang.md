@@ -953,6 +953,90 @@ Channel 内部使用了以下技术点来完成：
         - _WaitForSingleObject: 等待事件信号，对应 semasleep
         - _SetEvent：设置事件信号，对应 semawakeup
 
+### 问题1：chan内的锁是如何实现的？
+
+chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，内部实现如下：
+
+```
+func lock2(l *mutex) {
+	gp := getg()
+	if gp.m.locks < 0 {
+		throw("runtime·lock: lock count")
+	}
+	gp.m.locks++
+
+	// 投机性的抢一次（可能一次就抢到）
+	if atomic.Casuintptr(&l.key, 0, locked) {
+		return
+	}
+	// 先在M（OS线程）上创建2个信号量（waitsema, resumesema）
+	semacreate(gp.m)
+    
+	// 下面是一段典型的自旋锁实现
+	
+	// 1. 单核处理器上不会自旋，直接进入等待
+	// 2. 多核处理器上，自旋次数为 active_spin （4次）
+	spin := 0
+	if ncpu > 1 {
+		spin = active_spin
+	}
+Loop:
+	for i := 0; ; i++ {
+		v := atomic.Loaduintptr(&l.key) // v是等待锁的M链表头指针
+		if v&locked == 0 { // 没有任何M占用锁（反之表示至少有一个M占用锁）
+			// 乐观性地获得锁
+			if atomic.Casuintptr(&l.key, v, v|locked) { // 成功直接return
+				return
+			}
+			i = 0 // 否则进入自旋
+		}
+		if i < spin {
+			// 在一定次数内（spin=30次），通过忙等待尝试获取锁
+			// 这是一个轻量级的忙等待函数，它不会导致线程进入睡眠状态，而是通过执行一些空操作（如 PAUSE 指令）或短时间的忙等待，让出 CPU 给其他线程。
+			// 适用于锁竞争激烈但锁持有时间非常短的场景。
+			procyield(active_spin_cnt) 
+		} else if i < spin+passive_spin {
+			// 在更多的次数内（spin + passive_spin 次）
+			// 这是一种比procyield更重量级的让出 CPU 的方式，它会主动触发操作系统的线程调度（产生系统线程的上下文切换）。
+			osyield()
+		} else {
+			// 经过上面多次自旋后，锁仍然被其他G占用，则当前M进入等待队列
+			for {
+			    // 1.将处于锁等待队列的M头指针复制给nextwaitm（nextwaitm是一个队列链表指针，v去掉标志位后恰好是等待同一把锁的M链表头指针）
+			    // （注意这里对locked的处理仅仅是去掉该标志位，为了拿到M的指针）
+				gp.m.nextwaitm = muintptr(v &^ locked) 
+				// 2.再将当前M指针加上标志位，并设置到l.key
+				// （这两步操作共同实现了：将当前M加入等待队列）
+				if atomic.Casuintptr(&l.key, v, uintptr(unsafe.Pointer(gp.m))|locked) {
+					break // 入列成功则跳出循环，进入步骤4
+				}
+				// 3.锁状态发生变化（有M抢占或释放锁，就会更新l.key），则重新获取锁状态
+				v = atomic.Loaduintptr(&l.key)
+				if v&locked == 0 { // 又是一个新的chan操作，继续自旋
+					continue Loop
+				}
+			}
+			// 4. M入列后，再检查一次锁是否被占用，是则当前M进入睡眠状态，等待被唤醒（减少CPU消耗）
+			// （在unlock2函数内有唤醒的逻辑）
+			if v&locked != 0 {
+				semasleep(-1)
+				i = 0
+			}
+		}
+	}
+}
+```
+
+这段代码实现了一个混合自旋锁：
+
+- 先通过自旋尝试获取锁，减少上下文切换开销。
+
+- 如果自旋加锁失败，将线程加入等待队列并进入睡眠，避免浪费 CPU 资源。
+
+- 通过原子操作（`Loaduintptr` 和 `Casuintptr`）确保锁状态的线程安全。
+
+- 通过 `procyield` 和 `osyield` 实现不同强度的自旋等待策略。
+
 ### 参考
 
 - [draveness-Channel 实现原理](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-channel/)
