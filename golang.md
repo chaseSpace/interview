@@ -955,7 +955,7 @@ Channel 内部使用了以下技术点来完成：
 
 ### 问题1：chan内的锁是如何实现的？
 
-chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
+首先是**加锁**，chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
 
 ```
 func lock2(l *mutex) {
@@ -1000,7 +1000,7 @@ Loop:
 			// 这是一种比procyield更重量级的让出 CPU 的方式，它会主动触发操作系统的线程调度（产生系统线程的上下文切换）。
 			osyield()
 		} else {
-			// 经过上面多次自旋后，锁仍然被其他G占用，则当前M进入等待队列
+			// 经过上面多次自旋后，锁仍然被其他G占用，则当前M进入等待队列且睡眠等待唤醒
 			for {
 			    // 1.将处于锁等待队列的M头指针复制给nextwaitm（nextwaitm是一个队列链表指针，v去掉标志位后恰好是等待同一把锁的M链表头指针）
 			    // （注意这里对locked的处理仅仅是去掉该标志位，为了拿到M的指针）
@@ -1036,6 +1036,40 @@ Loop:
 - 通过原子操作（`Loaduintptr` 和 `Casuintptr`）确保锁状态的线程安全。
 
 - 通过 `procyield` 和 `osyield` 实现不同强度的自旋等待策略。
+
+然后是**释放锁**，[代码链接][lock_sema-unlock2]，内部实现如下：
+
+```
+// chan的每个操作都是先获得锁，然后再释放锁
+func unlock2(l *mutex) {
+	gp := getg()
+	var mp *m
+	
+	// 这个循环的主要目的就是释放当前M占用的锁，如果M进入了队列，则需要从队列中弹出并唤醒；若没有进入队列，则直接释放锁
+	for {
+		v := atomic.Loaduintptr(&l.key) // 先获取锁状态
+		if v == locked {  // 如果没有进入队列，锁恰好被当前M占用（根据lock2的逻辑可知，v==locked时表示仅有1个M占用锁），则直接尝试释放锁
+			if atomic.Casuintptr(&l.key, locked, 0) {
+				break // 释放成功，退出循环
+			}
+		} else {
+			// 否则就是进入了队列，需要从队列中弹出并唤醒
+			mp = muintptr(v &^ locked).ptr() // 先得到头M指针（l.key去掉lock标志位后就是M指针）
+			if atomic.Casuintptr(&l.key, v, uintptr(mp.nextwaitm)) { // l.key切换到下一个等待锁的M指针（出列操作）
+				semawakeup(mp) // 唤醒当前M，退出循环
+				break
+			}
+		}
+	}
+	gp.m.locks--
+	if gp.m.locks < 0 {
+		throw("runtime·unlock: lock count")
+	}
+	if gp.m.locks == 0 && gp.preempt { // restore the preemption request in case we've cleared it in newstack
+		gp.stackguard0 = stackPreempt
+	}
+}
+```
 
 ### 参考
 
@@ -1349,5 +1383,6 @@ Other commands:
 Type help followed by a command for full documentation.
 ```
 
-
 [lock_sema]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L38
+
+[lock_sema-unlock2]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L102
