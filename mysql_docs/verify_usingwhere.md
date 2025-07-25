@@ -3,7 +3,7 @@
 ## 理论
 
 在 MySQL 中，Explain 结果中 Extra 列显示`Using where`，表示 Server 层对引擎层返回的结果进行了二次过滤。
-这通常是因为 WHERE 语句中包含了无法使用索引的列，或者<u>优化器决定不使用索引</u>。
+这通常是因为 WHERE 语句中包含了无法使用索引的条件，或者<u>优化器决定不使用索引</u>。
 
 Where 子句包含了无法使用索引的列的情况：
 
@@ -22,45 +22,7 @@ Where 子句包含了无法使用索引的列的情况：
 
 ## 准备环境
 
-参照[教程][0]使用 Docker 启动 MySQL 实例。
-
-[0]: https://github.com/chaseSpace/go-common-pkg-exmaples/blob/master/_dockerfile/mysql/light.md
-
-
-进入 mysql shell：
-
-```plain
-mysql> select version();
-+-----------+
-| version() |
-+-----------+
-| 5.7.44    |
-+-----------+
-```
-
-执行下面的 sql 创建测试表：
-
-```plain
-CREATE DATABASE testdb;
-USE testdb;
-
-CREATE TABLE employees
-(
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(50),
-    department VARCHAR(50),
-    salary     DECIMAL(10, 2),
-    key idx_department_salary (department, salary)
-);
-
-INSERT INTO employees (name, department, salary) VALUES
-                                             ('Alice', 'HR', 5000.00),
-                                             ('Bob', 'Engineering', 7000.00),
-                                             ('Charlie', 'HR', 5500.00),
-                                             ('David', 'Engineering', 7200.00),
-                                             ('Eva', 'Marketing', 6000.00);
-
-```
+参照[教程](#准备环境)准备MySQL环境。
 
 ## 正例 1：没有被索引覆盖
 
