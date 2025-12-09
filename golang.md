@@ -953,11 +953,11 @@ Channel 内部使用了以下技术点来完成：
         - _WaitForSingleObject: 等待事件信号，对应 semasleep
         - _SetEvent：设置事件信号，对应 semawakeup
 
-### 问题1：chan内的锁是如何实现的？
+### 问题 1：chan 内的锁是如何实现的？
 
-首先是**加锁**，chan内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
+首先是**加锁**，chan 内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
 
-```
+```plain
 func lock2(l *mutex) {
 	gp := getg()
 	if gp.m.locks < 0 {
@@ -1039,7 +1039,7 @@ Loop:
 
 然后是**释放锁**，[代码链接][lock_sema-unlock2]，内部实现如下：
 
-```
+```plain
 // chan的每个操作都是先获得锁，然后再释放锁
 func unlock2(l *mutex) {
 	gp := getg()
