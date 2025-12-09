@@ -14,7 +14,7 @@
     - `range`查询是指使用 = 、 <> 、 > 、 >= 、 < 、 <= 、 IS (NOT) NULL 、 <=> 、 BETWEEN 、 LIKE 或 IN()
       其中之一的运算符与**常量**比较（不含`=`）。
     - `ref_or_null` 是指 Where 语句中对索引列进行等值比较时，且额外包含为 NULL 值的过滤条件，
-例如`WHERE key_column=expr OR key_column IS NULL`。
+      例如`WHERE key_column=expr OR key_column IS NULL`。
     - `ref`是指使用了非主键或唯一类型的索引，并且过滤行数占比较高。
     - `eq_ref`是指在多表查询中，对索引包含的所有列使用等值比较运算符，并且使用的是**前表**的主键或唯一非 NULL 索引。
 - 其他少见的条件限制，见[官方文档][0]。
@@ -244,7 +244,7 @@ WHERE age > 80;
 ```
 
 > [!NOTE]
-> range 查询还包括 Between 和 Like 这样的运算符，示例省略。。
+> 像这种单列查询，实际上并不需要ICP，因为ICP是用于解决复合索引的“部分利用”问题。这里的Extra显示可能并不是传统意义的ICP。后续不再说明
 
 第三种：使用联合唯一索引+range 查询
 
