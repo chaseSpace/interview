@@ -39,7 +39,7 @@ producer 生产的消息可以根据消息类型发布到不同的 topic，由�
 ## 分区的作用
 
 - 提供水平扩展能力：一个 topic 可以拆成多个 partition，每个 partition 被分布到不同 broker 上。
-    - 分区的数量可以超过broker数量，一个broker承载多个分区。
+    - 分区的数量可以超过 broker 数量，一个 broker 承载多个分区。
 - 实现并行消费：Kafka 的消费是 partition 为最小并行单位。
     - 一个 partition 一次只能被一个消费者（在同一 consumer group）独享
     - 分区数决定了最大消费并行度
@@ -78,13 +78,13 @@ producer 生产的消息可以根据消息类型发布到不同的 topic，由�
 
 ### 读快
 
-- OS页缓存：利用 OS 的页缓存机制，将文件直接映射到内存（mmap）进行读取。
+- OS 页缓存：利用 OS 的页缓存机制，将文件直接映射到内存（mmap）进行读取。
 - 零拷贝：基于`sendfile`系统调用实现。kafka 可以直接将数据从页缓存拷贝到 socket 缓冲区，过程仅在内核态，避免了绕走用户态的 2
   次拷贝。
-    - `sendfile`：在Linux等操作系统中，允许直接将文件描述符（如磁盘文件）的内容传输到另一个描述符（如网络套接字），在内核空间完成数据传输。
+    - `sendfile`：在 Linux 等操作系统中，允许直接将文件描述符（如磁盘文件）的内容传输到另一个描述符（如网络套接字），在内核空间完成数据传输。
 - 顺序读：数据按顺序读取，无需进行扫描。
 - 批量拉取：消费者一次拉取多条消息。
-- reactor模型：采用基于事件驱动的Reactor I/O模型，高效处理大量并发连接，无需为每个连接创建线程。
+- reactor 模型：采用基于事件驱动的 Reactor I/O 模型，高效处理大量并发连接，无需为每个连接创建线程。
 - 分区和索引：数据分散到多个分区并行存储和处理，支持并行消费。通过偏移量和时间索引，快速定位到文件中的具体消息位置，避免全盘扫描。
 
 ## 分区扩容需要注意什么
@@ -93,15 +93,15 @@ producer 生产的消息可以根据消息类型发布到不同的 topic，由�
 - 副本自动迁移可能导致短暂负载不均。
 - 扩分区不可逆：无法缩小分区数量。
 
-## Rebalance是什么
+## Rebalance 是什么
 
-Kafka中的Rebalance有两种：Broker Rebalance 和 消费组 Rebalance，一般是指后者。
+Kafka 中的 Rebalance 有两种：Broker Rebalance 和 消费组 Rebalance，一般是指后者。
 
 **消费组 Rebalance**
 
 当消费者数量变化时（加入/退出）或分区数变化时，消费组需要重新分配分区给消费者。rebalance 时：
 
-- Coordinator检测到成员变化，通知所有消费者停止数据消费
+- Coordinator 检测到成员变化，通知所有消费者停止数据消费
 - coordinator（协调者）重新分配 partition → consumer
 - 分配完成后恢复消费
 
@@ -119,7 +119,7 @@ Kafka中的Rebalance有两种：Broker Rebalance 和 消费组 Rebalance，一�
 
 - 消费者宕机、重启等。导致消息已经消费但是没有提交 offset（伴随`session.timeout.ms`超时）。
 - 消费者提交 offset 前，有消费者加入/移除，导致 kafka 针对一个 topic 进行 re-balance。
-- 消息处理耗时，或者消费者拉取的消息量太多，处理耗时超过了`max.poll.interval.ms` 的配置时间，导致kafka认为当前消费者已经死掉，触发再均衡。
+- 消息处理耗时，或者消费者拉取的消息量太多，处理耗时超过了`max.poll.interval.ms` 的配置时间，导致 kafka 认为当前消费者已经死掉，触发再均衡。
     - 该参数指定两次拉取消息的间隔，默认 5 分钟。若超过这个时间间隔没有发起 poll 操作，则消费组认为该消费者已离开了消费组，将进行再均衡操作。
 
 ### 解决方案
@@ -200,7 +200,7 @@ Once。
 
 **事务(Transaction)**
 
-生产者通过对消息生产的原子性控制，实现Topic级别、跨分区的 Exactly Once。Kafka 引入 TC（事务协调者）来实现事务。
+生产者通过对消息生产的原子性控制，实现 Topic 级别、跨分区的 Exactly Once。Kafka 引入 TC（事务协调者）来实现事务。
 
 - 事务初始化
     - 生产者自定义一个唯一的事务 ID(TransactionId)，并向 TC 申请一个 PID。
@@ -219,7 +219,7 @@ Once。
 事务机制会带来一定的性能开销，在实际使用时需要权衡。此外，Kafka 建议在 Consumer 端也进行去重，以防范意外情况下的重复消费。
 
 > [!NOTE]
-> Kafka 集群中运行着多个 TC 服务，每个 TC 服务负责事务 topic 的一个leader分区读写。Producer 根据
+> Kafka 集群中运行着多个 TC 服务，每个 TC 服务负责事务 topic 的一个 leader 分区读写。Producer 根据
 > transaction id 的哈希值，来决定该事务属于事务 topic 的哪个分区，最后找到这个分区的 leader 位置。
 
 ## 发送指定分区
