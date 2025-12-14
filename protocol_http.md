@@ -9,9 +9,9 @@
     - **超文本**包含文本、图片、音频、视频等
 - HTTP 协议使用 TCP 协议作为底层传输协议
 - 一个 HTTP 请求包含：请求行、请求头、空行和消息体
-  - 其中**请求行**包含：请求方法、请求 URL、协议版本
+    - 其中**请求行**包含：请求方法、请求 URL、协议版本
 - 一个 HTTP 响应包含：状态行、响应头、空行和消息体
-  - 其中**状态行**包含：协议版本、状态码、状态码描述，例如: HTTP/1.1 200 OK
+    - 其中**状态行**包含：协议版本、状态码、状态码描述，例如: HTTP/1.1 200 OK
 
 **请求方法**
 
@@ -46,8 +46,8 @@
 **HTTP/3 发展史**：
 
 - 2013 年 Google 推出 QUIC（Quick UDP Internet Connections，目标替代 TCP）
-- 2018 年 10 月提出将 HTTP-OVER-QUIC 更名为 HTTP/3 请求
-- 2018 年 11 月同意此请求 2022 年 6 月 HTTP/3 以 RFC9114 发布（UDP/QUIC/QPACK）
+- 2018 年 10 月提出将 HTTP-OVER-QUIC 更名为 HTTP/3 请求，2018 年 11 月同意此请求
+- 2022 年 6 月 HTTP/3 以 RFC9114 发布（UDP/QUIC/QPACK）
 
 ### 1.3 常用请求头
 
@@ -154,27 +154,26 @@
 客户端（通常是浏览器）可以将获取的资源保存在本地，下次请求相同的资源时可以直接从本地缓存中获取。
 客户端缓存通过设置 HTTP 头部来控制缓存的行为，常用的头部包括：Cache-Control、Expires、ETag、Last-Modified 等。
 
-- Expires：这个头部字段提供了一个日期/时间，该时间到达后响应被认为过时。这是 HTTP/1.0 的头部字段，在 HTTP/1.1 中已经被
-  Cache-Control
-  替代。
-  - 如果 Cache-Control 头部字段存在，Expires 通常不会被使用。
+- Expires：这个头部字段提供了一个日期/时间，该时间到达后响应被认为过时。这是 HTTP/1.0 的头部字段，
+  在 HTTP/1.1 中已经被 Cache-Control 替代。
+    - 如果 Cache-Control 头部字段存在，Expires 通常不会被使用。
 - Cache-Control：这是最重要的缓存头部字段，它提供了关于如何缓存响应的指令。例如，`Cache-Control: max-age=3600`
   表示资源可以被缓存 1 小时。
-  - 其支持的值包括：private、public、no-cache、max-age，no-store，默认为 private
-  - private：客户端可以缓存响应，但只能在与原始服务器通信时使用该响应。
-  - public：客户端和代理服务器都可以缓存响应。
-  - no-cache：客户端可以缓存响应，但必须先与原始服务器验证其有效性。
-    - 与 private/public 的区别在于它每次都要向原始服务器验证其有效性，而前者只在缓存过期时才验证。
-  - no-store：客户端不能缓存响应，并且每次都要向原始服务器验证其有效性（**适用于极高隐私级别场景**）。
-  - max-age：客户端可以缓存响应，但缓存的时间不能超过指定的秒数。
-  - **如何验证缓存有效性？**
-    - 使用 If-Modified-Since 或 If-None-Match 请求头来发出条件性请求
+    - 其支持的值包括：private、public、no-cache、max-age，no-store，默认为 private
+    - private：客户端可以缓存响应，但只能在与原始服务器通信时使用该响应。
+    - public：客户端和代理服务器都可以缓存响应。
+    - no-cache：客户端可以缓存响应，但必须先与原始服务器验证其有效性。
+        - 与 private/public 的区别在于它每次都要向原始服务器验证其有效性，而前者只在缓存过期时才验证。
+    - no-store：客户端不能缓存响应，并且每次都要向原始服务器验证其有效性（**适用于极高隐私级别场景**）。
+    - max-age：客户端可以缓存响应，但缓存的时间不能超过指定的秒数。
+    - **如何验证缓存有效性？**
+        - 使用 If-Modified-Since 或 If-None-Match 请求头来发出条件性请求
 - Last-Modified：服务器返回这个字段表示资源最后一次被修改的时间，通常与请求头 If-Modified-Since 配合使用
-  - 客户端可以使用这个时间来发出条件性请求，即如果资源未更改，服务器可以返回 304 Not Modified。
+    - 客户端可以使用这个时间来发出条件性请求，即如果资源未更改，服务器可以返回 304 Not Modified。
 - ETag：服务器返回这个字段表示一个资源的特定版本的标识符，通常与请求头 If-None-Match 配合使用。
-  - 客户端可以存储这个 ETag 值，并在后续的请求中使用 If-None-Match
-    头部字段来验证资源是否已更改，服务端仅在 Etag 不匹配的情况下返回完整的资源，否则返回 304 Not Modified。
-  - 若客户端同时设置了 If-Modified-Since 和 If-None-Match 头部字段，则优先使用后者，且当后者有变化时不再判断前者。
+    - 客户端可以存储这个 ETag 值，并在后续的请求中使用 If-None-Match
+      头部字段来验证资源是否已更改，服务端仅在 Etag 不匹配的情况下返回完整的资源，否则返回 304 Not Modified。
+    - 若客户端同时设置了 If-Modified-Since 和 If-None-Match 头部字段，则优先使用后者，且当后者有变化时不再判断前者。
 
 **强制缓存与协商缓存**
 
@@ -270,7 +269,7 @@ W3C 制定了 CORS 标准，允许服务器通过 HTTP 响应头来指定哪些�
 
 CORS 的工作原理主要依赖于 HTTP 头部字段，服务器通过这些字段来告诉浏览器允许哪些跨源请求。以下是 CORS 工作原理的关键步骤：
 
-- 预检请求（Preflight Request）：当浏览器检测到一个跨源请求时，首先会发送一个预检请求（`OPTIONS`请求），
+- 预检请求（Preflight Request）：当浏览器检测到一个跨源请求时，首先会发送一个预检请求（`OPTIONS`方法），
   询问服务器是否允许跨源请求。预检请求中包含 `Origin` 头部字段，表明了实际请求的源。
 - CORS 响应头：服务器在响应预检请求时，会设置一些 CORS 响应头，如 `Access-Control-Allow-Origin`，来指定允许访问的源。
   如果服务器允许跨源请求，它可能设置该响应头部字段的值为 `*`（表示允许所有源）或者指定的源。
@@ -281,16 +280,16 @@ CORS 的工作原理主要依赖于 HTTP 头部字段，服务器通过这些字
 CORS 涉及的 HTTP 头部字段：
 
 - 首先是预检请求中的头部字段：
-  - `Origin`：表明请求的源。
-  - `Access-Control-Request-Method`：表明实际请求使用的 HTTP 方法。
-  - `Access-Control-Request-Headers`：表明实际请求中使用的头部字段。
+    - `Origin`：表明请求的源。
+    - `Access-Control-Request-Method`：表明实际请求使用的 HTTP 方法。
+    - `Access-Control-Request-Headers`：表明实际请求中使用的头部字段。
 - 然后是预检请求响应中的头部字段（将服务器的要求告知浏览器）：
-  - `Access-Control-Allow-Origin`：指定允许访问的源，可以是具体域名或星号。
-  - `Access-Control-Allow-Methods`：指定允许的 HTTP 方法列表。
-  - `Access-Control-Allow-Headers`：指定允许的头部字段列表。
-  - `Access-Control-Allow-Credentials`：指定是否允许发送 Cookie。
-  - `Access-Control-Expose-Headers`：指定允许浏览器从响应头部中读取的字段列表。
-  - `Access-Control-Max-Age`：指定针对当前请求的预检请求的有效期，单位为秒。
+    - `Access-Control-Allow-Origin`：指定允许访问的源，可以是具体域名或星号。
+    - `Access-Control-Allow-Methods`：指定允许的 HTTP 方法列表。
+    - `Access-Control-Allow-Headers`：指定允许的头部字段列表。
+    - `Access-Control-Allow-Credentials`：指定是否允许发送 Cookie。
+    - `Access-Control-Expose-Headers`：指定允许浏览器从响应头部中读取的字段列表。
+    - `Access-Control-Max-Age`：指定针对当前请求的预检请求的有效期，单位为秒。
 
 > [!WARNING]
 > **对于附带 Cookie 的跨源请求**:
@@ -306,12 +305,12 @@ CORS 涉及的 HTTP 头部字段：
 
 - 请求方法是以下三种方法之一：`GET`、`HEAD`、`POST`
 - 请求头仅包含安全的字段，如下：
-  - `Accept`、`Accept-Language`、`Content-Language`、`Content-Type`
-  - `Content-Type` 标头值限定为下列三者之一：
-    - `text/plain`
-    - `multipart/form-data`
-    - `application/x-www-form-urlencoded`
-  - `Range`（只允许简单的范围标头值 如 `bytes=256-` 或 `bytes=127-255`）
+    - `Accept`、`Accept-Language`、`Content-Language`、`Content-Type`
+    - `Content-Type` 标头值限定为下列三者之一：
+        - `text/plain`
+        - `multipart/form-data`
+        - `application/x-www-form-urlencoded`
+    - `Range`（只允许简单的范围标头值 如 `bytes=256-` 或 `bytes=127-255`）
 
 请求过程：
 
@@ -332,7 +331,7 @@ CORS 涉及的 HTTP 头部字段：
 
 ## 2. 简述 HTTPS 协议
 
-HTTPS 主要用于解决 HTTP 的安全问题，它在 TCP 和 HTTP 网络层之间加入了 SSL/TLS 安全协议，
+HTTPS 主要用于解决 HTTP 的安全问题，它在 TCP 和 HTTP 之间的会话层加入了 SSL/TLS 安全协议，
 使得报文能够加密传输的同时对通信双方进行身份认证。
 
 **注意点**
@@ -485,7 +484,7 @@ TLS 记录层是 TLS 协议的一个关键组成部分，它负责在两个通�
 **TLS 1.2 的问题**
 
 - TLS 1.2 及以下版本都包含了较多的密码套件，这些密码套件目前已经被发现存在漏洞或者安全性变弱；
-  - 如 RSA 密钥交换和某些哈希函数（MD5 和 SHA1）
+    - 如 RSA 密钥交换和某些哈希函数（MD5 和 SHA1）
 - TLS 1.2 握手过程包含 2 个 RTT，需要 200ms~500ms 完成握手过程，效率很低
 
 **TLS 1.3 的改进**
@@ -545,10 +544,10 @@ TLS 1.3 0-RTT 的第二个安全问题是，它不保证连接之间的不重播
 
 #### 2.1.7 SSL/TLS 属于 OSI 模型中的哪一层
 
-SSL/TLS 协议中的功能涉及到了 OSI 模型中的传输层和表示层。
+SSL/TLS 协议中的功能涉及到了 OSI 模型中的会话层和表示层。
 
-- 从传输层来看，SSL/TLS 加固了 TCP 连接，以防止数据在传输过程中被窃听或篡改；
-- 从表示层来看，SSL/TLS 提供数据加密和解密服务，确保数据在应用层之前保持机密性和完整性。
+- 记录协议 (Record Protocol): 负责数据加密、压缩和封装，功能上类似表示层（L6）。
+- 握手协议 (Handshake Protocol): 负责身份认证、协商密钥和加密参数，功能上类似会话层（L5）。
 
 对于 TCP/IP 模型，SSL/TLS 工作在传输层和应用层之间。
 
@@ -570,6 +569,7 @@ HTTP/2，也被称为**H2**，是 HTTP 协议的第二个主要版本，于 2015
 ### 3.1 HTTP/2 的关键特性
 
 - 二进制协议：HTTP/2 将 HTTP/1.1 的文本消息转换为二进制格式，这使得消息的解析更加高效，减少了延迟，并提高了安全性。
+    - HTTP/1.1 通过换行符或固定符号来查找消息边界，效率远小于二进制的长度查找。
 - 多路复用：HTTP/2 允许在同一个 TCP 连接上并发传输多个请求和响应，而不需要完全顺序传输。减少了延迟，因为不同的请求可以同时进行，而不会相互阻塞。
 - 头部压缩：HTTP/2 引入了 HPACK 压缩算法，用于压缩请求和响应的头部信息。这减少了需要传输的数据量，提高了传输效率。
 - 服务器推送：HTTP/2 允许服务器在客户端请求之前主动发送资源，这可以进一步减少延迟，加快页面加载速度。
@@ -602,7 +602,7 @@ HTTP/2 中的流（Stream）是一个运行在 TCP 连接上的用于交换 HTTP
 HTTP/2 中的帧（Frame）是用于在流（Stream）上传输数据的基本单位。每个帧都包含一个帧头（Frame Header）
 和一个可选的数据负载（Data Payload）。
 
-每一帧都包含几个字段，有 length、type、flags、stream identifier、frame playload 等。其中 type 代表帧的类型，
+每一帧都包含几个字段，有 length、type、flags、stream identifier、frame payload 等。其中 type 代表帧的类型，
 在 HTTP/2 的标准中定义了 10 种不同的类型，包括上面所说的 HEADERS frame 和 DATA frame。此外还有：
 
 - PRIORITY（设置流的优先级）

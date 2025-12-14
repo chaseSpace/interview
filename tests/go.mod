@@ -2,7 +2,7 @@ module x
 
 go 1.21
 
-require github.com/stretchr/testify v1.9.0
+require github.com/stretchr/testify v1.11.1
 
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect

@@ -1,25 +1,31 @@
 package main
 
 import (
+	"strings"
+	"sync"
 	"testing"
 )
 
-type noCopy struct{}
-
-func (*noCopy) Lock()   {}
-func (*noCopy) Unlock() {}
-
 type MyStruct struct {
-	noCopy noCopy
-	//sync.Locker
+	noCopy sync.Mutex
+	n2     sync.Once
+	n3     sync.WaitGroup
+	n4     sync.Pool
+	n5     sync.Cond
 	// 其他字段...
 }
 
 // go vet 可以检测嵌入 noCopy 类型的变量是否被复制
-func TestNoCopyStringBuilder(t *testing.T) {
+func TestNoCopySyncLcker(t *testing.T) {
 	v := MyStruct{}
 
-	// copy it
-	v2 := v
+	v2 := v // go vet提示：无法复制sync.Locker成员字段
 	_ = v2
+}
+
+func TestNoCopyStringBuilder(t *testing.T) {
+	v3 := strings.Builder{}
+	v3.WriteString("x")
+	v4 := v3
+	v4.WriteString("2") // panic
 }

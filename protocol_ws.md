@@ -30,7 +30,6 @@ WS 的工作原理非常简单，具体步骤如下：
 - 客户端发送一个 HTTP 请求给服务器，请求中包含了特殊的头部信息 `Upgrade: websocket`，表示希望升级到 WebSocket 协议。
 - 服务器收到请求后，如果支持 WebSocket 协议，则返回一个状态码 `101 Switching Protocols`，表示协议切换成功。
 - 之后，客户端和服务器之间就可以使用 WebSocket 协议进行全双工通信，可以发送和接收字符串或二进制消息，直到连接关闭。
-    - 在长连接持续期间，xx
 
 <div align="left">
 <img src="img/ws-handshake.jpg" width="600" height="648">
