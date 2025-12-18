@@ -17,11 +17,13 @@ PLAN：
 
 ## 索引
 
+- [网络分层模型](protocol_layer.md)
 - [TCP/UDP 系列](protocol_tcp%26udp.md)
 - [HTTP 系列](protocol_http.md)
 - [Websocket 系列](protocol_ws.md)
 - [Kafka 系列](kafka.md)
 - [Redis 系列（89%）](db_redis.md)
+- [Redis 深挖系列](db_redis_dive.md)
 - [MySQL 系列（80%）](db_mysql.md)
 
 ---
@@ -72,15 +74,6 @@ PLAN：
 - [如何理解缓存有哪些缓存方案（TODO）](system_design/understanding_cache.md)
 - [如何发现系统中的性能瓶颈（TODO）](system_design/how_to_find_performance_bottleneck.md)
 - [如何理解消息队列，用在哪些场景（TODO）](system_design/understanding_message_queue.md)
-
-## 关于作者
-
-- 昵称：Leigg
-- 技术栈：主 Go，副 Python/Rust；K8s/Istio
-- 编程年限：7 年+
-- Github：https://github.com/chaseSpace
-- 主要作品：[区块链入门][2]，[Kubernetes 中文教程][1]
-- 联系方式：random2035@qq.com
 
 [0]: https://www.zhihu.com/question/26312148/answer/1982172738
 
