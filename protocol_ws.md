@@ -55,7 +55,7 @@ Sec-WebSocket-Extensions: permessage-compress, permessage-deflate
 
 其中标星的字段都是 WebSocket 协议规定的必需的握手头部信息。其中：
 
-- `Upgrade` 表示希望升级到 WebSocket 协议；
+- `Connection: Upgrade` 表示希望升级到 WebSocket 协议；
 - `Upgrade: websocket` 表示希望升级到 WebSocket 协议；
 - `Sec-WebSocket-Version` 表示 WebSocket 协议的版本号（多个以逗号分隔），如果服务端不支持该版本，需要返回一个
   Sec-WebSocket-Version header，里面包含服务端支持的版本号；

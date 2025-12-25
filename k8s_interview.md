@@ -17,7 +17,7 @@ node 节点包含的组件有：kubelet、kube-proxy、container-runtime。
 
 ### 支持哪些容器运行时
 
-主要是通过实现 容器运行时接口 (CRI) 来达成，核心运行时包括 containerd、CRI-O，以及早期的 Docker（通过 Dockershim 适配，现在已移除）。
+主要是通过实现容器运行时接口 (CRI) 来达成，核心运行时包括 containerd、CRI-O，以及早期的 Docker（通过 Dockershim 适配，现在已移除）。
 
 ### 什么是 Pod
 
@@ -109,7 +109,7 @@ GET、TCP Socket、Exec Command 等方式检测容器状态，实现自动重启
 
 ### Pod 处于 pending 状态可能有哪些原因
 
-处于 Pending 状态通常是因为调度器无法将 Pod 放置到任何节点上，常见原因包括 节点资源不足（CPU/内存/GPU
+处于 Pending 状态通常是因为调度器无法将 Pod 放置到任何节点上，常见原因包括节点资源不足（CPU/内存/GPU
 不足）、调度约束不满足（nodeSelector,
 亲和性, 污点/容忍不匹配）、节点异常（NotReady 状态）、存储问题（PV/PVC 绑定失败）、镜像问题或调度器自身故障。
 

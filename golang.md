@@ -96,7 +96,7 @@ Go GC 具体过程如下：
 3. 并发标记阶段：
     * 不断从灰色队列取对象
     * 扫描其引用
-    * 每发现一个白色对象 → 标为灰色并加入队列
+   * 每发现一个白色对象 → 标为灰色
     * 扫描完成的对象变为黑色
 4. 写屏障在并发标记期间维持三色不变性（确保黑色对象不指向白色对象）。
 5. 重新标记（Re-mark，短暂 STW），补齐并发阶段遗漏的变更。
@@ -199,73 +199,21 @@ Go1.8 的混合写屏障让 Go GC 真正进入了“低暂停、可预测、高�
 
 ### defer 关键字
 
-`defer`会在当前函数返回前执行传入的函数，它会经常被用于关闭文件描述符、关闭数据库连接以及解锁资源。
+`defer`会在当前函数返回前执行传入的函数，多个defer操作按照出栈入栈的顺序执行，它会经常用于释放资源。
 
-#### 多次调用时执行顺序是如何确定的
+有几个注意点：
 
-参考代码：
-
-```shell
-func main() {
-	for i := 0; i < 5; i++ {
-		defer fmt.Println(i)
-	}
-}
-
-$ go run main.go
-4
-3
-...
-```
-
-请把 defer 调用当做是一个入栈操作，每次调用 defer 时，它会把函数放入栈中，最终执行时首先执行最后入栈的函数。
-直接展开 for 循环：
-
-```shell
-func main() {
-	defer fmt.Println(0)
-	defer fmt.Println(1)
-	defer fmt.Println(2)
-	...
-}
-```
-
-#### 预计算参数
-
-参考代码：
-
-```shell
-func main() {
-	startedAt := time.Now()
-	defer fmt.Println(time.Since(startedAt))
-	
-	time.Sleep(time.Second)
-}
-
-$ go run main.go
-0s
-```
-
-这段代码用于计算函数耗时，但结果不符合预期。原因是 Go 的参数传值是值类型，`fmt.Println`的参数在注册 defer 时就已经计算完毕了。
-通过传入一个匿名函数，可以解决这个问题：
-
-```shell
-func main() {
-	startedAt := time.Now()
-	defer func() { fmt.Println(time.Since(startedAt)) }()
-	
-	time.Sleep(time.Second)
-}
-
-$ go run main.go
-1s
-```
-
-在这个修复版本中，`fmt.Println`函数将作为匿名函数的参数，那么函数在作为参数时，实际传的是函数指针。
+- 参数求值时机：defer 若直接调用函数，则函数参数会在defer注册时立即求值和存储，而不是函数返回时。
+- 命名返回值：defer可以修改函数的命名返回值（当使用命名返回值时）。
+- 循环变量捕获：在循环中调用defer，若defer使用匿名函数，且使用闭包方式传入循环变量，则捕获的参数永远是最后一次循环的参数值。
+    - 因为捕获的是变量引用，只能通过参数传值或定义局部变量解决。
+- 循环中的延迟执行：在循环中调用defer，defer调用不会在单次循环结束时执行，而是累计到循环结束后统一执行。
+    - 解法是使用匿名函数包裹defer调用。
+- 必须在return之前使用。
 
 ### 什么是内联函数
 
-内联函数（inline function）是一种编译器优化技术，通常用于告诉编译器在编译时将函数调用直接替换为函数体，而不是像普通函数一样生成一个调用。
+内联函数（inline function）是一种编译器优化技术，通常用于告诉编译器在编译时将函数内的逻辑直接展开到当前作用域中，而不是像普通函数一样生成一个调用。
 这种替换可以减少函数调用的开销，提高程序的执行效率。通常在函数比较小且频繁调用的情况下会自动进行内联优化
 
 > [!NOTE]
@@ -1117,6 +1065,12 @@ GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型
 - **Machine**：代表操作系统层面的线程，是真正执行 Goroutine 的实体。
     - 当 Goroutine 进行系统调用或 channel/IO 阻塞操作时，它会被 P 挂起，然后调度下一个 G 执行。
     - 当挂起的 G 被唤醒（通常是阻塞结束）时，M 会重新分配给 P，然后继续执行。
+  - 会阻塞G+M的系统调用：
+      - 文件设备I/O：read、write、close、pread / pwrite、fsync。。
+      - 网络设备I/O：connect、accept、recv、send。。
+      - 同步等待类：futex、sem_wait / sem_timedwait、nanosleep、select、wait4、pause。。
+      - CGO 调用。
+  - channel阻塞不会阻塞M。
 
 简单来说，P 调度 M 来执行 G。
 
@@ -1126,10 +1080,15 @@ GPM（goroutine、processor、machine）模型指的是 Go 语言的并发模型
 这种调度方式主要用于确保系统的响应性和资源的公平分配。Go 调度器在 1.13 及以前支持基于协作的抢占式调度，从 1.14 开始支持基于信号的
 **真** 抢占式调度。
 
-- 基于协作的抢占式调度：通过编译器在函数调用时插入抢占检查指令，在函数调用时检查当前 Goroutine
-  是否发起了抢占请求，若是就让控制权给调度器，否则继续执行；
-- 基于信号的抢占式调度：调度器会根据情况给正在执行 Goroutine 的 M 发送系统信号，迫使 Goroutine 让出控制权，使得 M 可以执行其他
-  Goroutine。
+- 基于协作的抢占式调度：只能在下面的协作点切换 G。问题是如果写了一个空的死循环，就永远不存在协作点，导致整个 P 被持续霸占。
+    - 函数调用
+    - channel / mutex
+    - syscall
+    - `runtime.Gosched()`
+- 基于信号的抢占式调度：即使 G 在纯 CPU 循环中，也能被“打断”。
+    - 调度器会根据情况给正在执行 Goroutine 的 M 发送系统信号，信号 handler 并不立刻切 G，而是在G的栈上设置一个安全抢占点，
+      这样当下一次执行到安全点是就会检测到抢占标记，然后使当前G让出P，G 进入 runnable 队列
+    - 这是一种基于异步 + 协作的抢占式调度，并不是强制切换。
 
 > [!NOTE]
 > 在 Go 1.14 以前，Go 实现的是协作式的抢占调度，它依赖于协程自己决定在合适的时机（比如系统调用或 IO 阻塞时）让出 CPU 控制权。
@@ -1195,6 +1154,10 @@ Go 提供传统的并发原语，以便开发人员实现常规并发编程中�
 - sync.Mutex：互斥锁，用于保护共享资源的并发访问。
 - sync.RWMutex：读写锁，是 sync.Mutex 的升级版本，用于保护共享资源的并发读写访问（支持多读单写）。
 - sync.Map：并发安全的 Map，用于存储并发安全的键值对。
+    - 优化点：
+        - 双map+atomic实现无锁读
+        - 延迟删除
+        - 写操作使用CAS更新/复活，不存在的key才会加锁
 - sync.Cond：允许一个或多个 Goroutine 在满足特定条件时进行等待，并在条件变量发生变化时通知等待的 Goroutine。
     - [syncCond 示例](tests/sync.cond_test.go)
 - sync.WaitGroup：它提供了一个计数器，可以在多个 Goroutine 之间进行增加和减少，主要用于等待一组 Goroutine 的执行完成。
