@@ -704,7 +704,3 @@ Other commands:
 
 Type help followed by a command for full documentation.
 ```
-
-[lock_sema]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L38
-
-[lock_sema-unlock2]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L102

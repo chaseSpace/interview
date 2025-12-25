@@ -1,6 +1,118 @@
 # Golang 深挖
 
-## interface原理
+## Interface原理
+
+### 接口基础概念
+
+Go 语言中的接口是一种类型，它定义了一组方法的集合。接口提供了一种方式来指定对象的行为：如果某个对象实现了接口中的所有方法，则该对象可以赋值给该接口变量。
+
+### interface 的本质
+
+interface 本质上是一种动态类型，它包含两个关键信息：
+
+- **动态类型（Dynamic Type）**：接口所存储的具体类型
+- **动态值（Dynamic Value）**：该具体类型的值
+
+这种设计使 Go 能够实现多态性，不同的类型可以实现相同的接口，通过接口调用方法时会执行对应类型的实际方法。
+
+### 底层结构（runtime）
+
+Go 接口在运行时有两种主要的底层结构：
+
+1. **空接口（empty interface）**：`interface{}`
+   ```go
+   type eface struct {
+       _type *_type    // 指向类型信息的指针
+       data  unsafe.Pointer  // 指向实际数据的指针
+   }
+   ```
+
+2. **非空接口（non-empty interface）**：
+   ```go
+   type iface struct {
+       tab  *itab      // 接口表，包含接口类型和具体类型的映射关系
+       data unsafe.Pointer  // 指向实际数据的指针
+   }
+   
+   type itab struct {
+       inter *interfacetype  // 接口类型信息
+       _type *_type         // 实现接口的具体类型信息
+       hash  uint32         // 类型的哈希值
+       _     [4]byte
+       fun   [1]uintptr     // 方法地址数组（动态长度）
+   }
+   ```
+
+### 赋值过程
+
+当具体类型赋值给接口时，发生以下步骤：
+
+1. **类型检查**：编译器检查具体类型是否实现了接口的所有方法
+2. **创建接口变量**：分配内存存储接口变量
+3. **设置类型信息**：将具体类型的类型信息存储到接口的类型字段
+4. **设置值信息**：将具体类型的值（或指向值的指针）存储到接口的值字段
+
+对于值类型，会进行值拷贝；对于指针类型，会拷贝指针值。
+
+### interface == nil 的经典坑
+
+interface 与 nil 的比较有特殊的陷阱：
+
+- **接口变量本身为 nil**：`var i interface{}`，此时 i 为 nil
+- **接口变量包含 nil 值**：`var p *int; var i interface{} = p`，此时 i 不为 nil，但其动态值为 nil
+
+```go
+var i interface{}
+fmt.Println(i == nil) // true
+
+var p *int
+i = p
+fmt.Println(i == nil) // false，因为接口包含了一个具体的类型（*int）和值（nil）
+```
+
+这是因为在第二种情况下，接口中存储了具体类型信息（*int），所以接口本身不为 nil，尽管其值为 nil。
+
+### interface 的比较规则
+
+接口的比较遵循以下规则：
+
+1. **两个 nil 接口**：总是相等
+2. **nil 接口与非 nil 接口**：不相等
+3. **不同类型的动态值**：不相等
+4. **相同类型且可比较的动态值**：比较其动态值
+5. **包含不可比较类型的接口**：比较时会 panic
+
+接口比较时，首先比较动态类型，如果类型相同再比较动态值。
+
+### type assertion / type switch 原理
+
+**类型断言（Type Assertion）**：
+
+```go
+val, ok := interfaceVar.(Type) // 安全的类型断言，ok 表示是否成功
+val := interfaceVar.(Type) // 不安全的类型断言，失败会 panic
+```
+
+类型断言的原理：
+
+1. 检查接口的动态类型是否与目标类型匹配
+2. 如果匹配，返回接口中的动态值并转换为目标类型
+3. 如果不匹配，安全断言返回零值和 false，不安全断言则 panic
+
+**类型切换（Type Switch）**：
+
+```go
+switch v := interfaceVar.(type) {
+case int:
+// v 是 int 类型
+case string:
+// v 是 string 类型
+default:
+// 未匹配到任何类型
+}
+```
+
+类型切换是类型断言的批量形式，Go 会检查接口的动态类型是否匹配任一分支，并将相应的值赋给 case 变量。
 
 ## Map原理
 
@@ -831,7 +943,7 @@ Channel 内部使用了以下技术点来完成：
         - _WaitForSingleObject: 等待事件信号，对应 semasleep
         - _SetEvent：设置事件信号，对应 semawakeup
 
-### 问题 1：chan 内的锁是如何实现的？
+### chan 内的锁是如何实现的？
 
 首先是**加锁**，chan 内不管读写都是通过`lock(&c.lock)`来完成添加和释放的，[代码链接][lock_sema]，内部实现如下：
 
@@ -952,3 +1064,7 @@ func unlock2(l *mutex) {
 ### 参考
 
 - [draveness-Channel 实现原理](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-channel/)
+
+[lock_sema]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L38
+
+[lock_sema-unlock2]: https://github.com/golang/go/blob/8bba868de983dd7bf55fcd121495ba8d6e2734e7/src/runtime/lock_sema.go#L102
