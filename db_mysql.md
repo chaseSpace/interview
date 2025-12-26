@@ -102,6 +102,17 @@ MySQL 的架构设计分为多个层次，每个层次负责不同的功能和�
 索引底层数据结构存在很多种类型，常见的索引结构有: B 树， B+树 和 Hash、红黑树。在 MySQL 中，无论是 Innodb 还是 MyIsam，都使用了
 B+树作为索引结构。
 
+**为何索引就快？**
+
+这与索引使用的数据结构有关，B+树的查找复杂度通常是 O(log n)，因为所有数据都存储在叶节点，查询使用**二分查找**从根节点遍历到叶节点，
+这决定了操作次数与树的高度成正比，而树的高度是log_m(N)（其中 N 是总数据量，m 是节点最大扇出数），这在实践中通常是一个很小的常数（例如
+3-4 层）。
+
+> 这里引申出二叉树的三种遍历方式：
+> 1. 先序遍历：根-左-右
+> 2. 中序遍历：左-根-右
+> 3. 后序遍历：左-右-根
+
 ### 优缺点
 
 优点：
@@ -348,7 +359,8 @@ GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 - **记录锁**：锁定单行记录。它总是在索引记录上加锁。
 - **间隙锁**：锁定索引记录之间的“间隙”，而不是记录本身。它的目的是防止其他事务在锁定的范围内插入新数据（防止幻读）。
-    - 间隙锁只在某些隔离级别下（主要是 REPEATABLE READ）生效。
+    - 间隙锁只在RR级别下生效。
+    - 触发场景：范围更新/范围删除/FOR-UPDATE读不存在的数据。
 - **临键锁**：记录锁 + 间隙锁 的组合。它锁定**一个索引记录，以及该记录之前的间隙**。
     - 是 InnoDB 在 REPEATABLE READ 隔离级别下默认的行锁类型，主要目的是综合防止不可重复读和幻读。
     - 对于范围查询，InnoDB 会使用临键锁将范围内的所有记录及其往前的间隙锁定。
@@ -641,7 +653,7 @@ sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY
 
 - [验证 index condition](./mysql_docs/verify_usingindexcond.md)
 
-### 有哪些查询类型
+### 有哪些场景explain类型
 
 #### 1. ref 是非唯一等值查询
 
@@ -649,7 +661,7 @@ sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY
 - 可以使用普通索引（非 unique）
 - 通常对应 =, IN()
 
-#### 2. eq_ref 唯一等值查询（最优）
+#### 2. eq_ref 唯一等值查询
 
 - 用 PRIMARY KEY 或 UNIQUE KEY 等值匹配
 - 且该列 不包含 NULL
@@ -678,7 +690,7 @@ sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY
 | 5  | **ref**         | 👍     | 普通索引等值            |
 | 6  | **ref_or_null** | 👍     | a=10 OR a IS NULL |
 | 7  | **range**       | 🙂     | 条件 > < BETWEEN    |
-| 8  | **index**       | 😢     | 扫全索引，不回表          |
+| 8  | **index**       | 😢     | 扫全索引，不回表。比如无条件查询  |
 | 9  | **ALL**         | 😭 最差  | 全表扫描              |
 
 ## 查询优化
@@ -722,6 +734,35 @@ Mysql 查询性能优化要从三个方面考虑，库表结构优化、索引�
     - 表达式示例：`Where price * 1.1 > 100`
     - 函数示例：`Where YEAR(time) > 2020`
 - 尽量避免向客户端返回大数据量：先考虑分页查询，再考虑需求是否合理。
+
+### 慢查询处理
+
+处理MySQL慢查询通常遵循定位 -> 分析 -> 优化的流程：通过开启慢查询日志定位慢SQL，使用EXPLAIN分析执行计划（关注type和Extra字段，避免ALL、Using
+temporary等），然后进行优化，主要手段包括加索引、重写SQL（避免OR、NULL判断、函数操作字段等）。
+
+#### 开启慢查询
+
+可通过SQL或配置开启。
+
+#### 查询慢日志
+
+查询慢日志：使用 `mysqldumpslow` 工具分析日志文件，或使用 `pt-query-digest`，或云数据库提供的慢日志功能。
+
+**实时查看**：使用 `SHOW PROCESSLIST`; 或 `SHOW FULL PROCESSLIST`; 查看当前正在执行的慢查询。
+
+#### 分析慢查询
+
+在慢查询日志或通过实时查询找到SQL后，使用 EXPLAIN 查看其执行计划。
+关注字段：
+
+- type: 理想情况是 const, eq_ref, ref, range。避免 index 或 ALL。
+- possible_keys / key: 是否使用索引 (key不为NULL)。
+- rows: 扫描行数，越少越好。
+- Extra: 避免 Using temporary (使用临时表) 和 Using filesort (文件排序)。
+
+#### 优化SQL
+
+前面介绍过，略。
 
 ## 一条查询最多使用几个索引
 

@@ -9,12 +9,6 @@
 说明：本项目涉及的主题逐渐增多和复杂，更新速度较慢，但尽可能保持周更频率，请持续关注。对于失误之处，敬请指正。如果你有好的主题或建议，也欢迎通过
 issue 告知。
 
-PLAN：
-
-- 正在更新（2024-05-15）：[Redis 系列（89%）](db_redis.md)。
-- 正在更新（2024-07-07）：[MySQL 系列（85%）](db_mysql.md)。
-- 最新完成（2024-04-26）：[幂等有几种实现方式](impl_idempotent.md) ，欢迎阅读。
-
 ## 索引
 
 - [网络分层模型](protocol_layer.md)
@@ -25,10 +19,12 @@ PLAN：
 - [Redis 系列（89%）](db_redis.md)
 - [Redis 深挖系列](db_redis_dive.md)
 - [MySQL 系列（80%）](db_mysql.md)
+    - [MySQL 锁介绍](./mysql_docs/lock_intro.md)
 
 ---
 
 - [Go 基础篇](golang.md)
+- [Go 深挖篇](golang_dive.md)
 - [Go 数据结构篇（30%）](golang_ds.md)
 - [Go 设计原则篇](golang_dp_principle.md)
 - [Go 设计模式篇](golang_designpattern.md)
@@ -50,6 +46,7 @@ PLAN：
 
 系统设计题（面向高级工程师/架构师），建议先阅读 [如何答好系统设计题][0]。
 
+- [如何设计一个IM系统（TODO）](system_design/design_a_im_system.md)
 - [如何设计一个秒杀系统（TODO）](system_design/design_a_seckill_system.md)
 - [如何设计一个抢红包系统（TODO）](system_design/design_a_red_envelope_system.md)
 - [如何设计一个短网址系统（TODO）](system_design/design_a_shorturl_system.md)
