@@ -1,4 +1,4 @@
-# 后端面试资料参考
+# Golang 后端面试资料参考
 
 <div align="center">
 <img src="img/codeitnow.jpg" width="600" height="305">
@@ -44,20 +44,22 @@ issue 告知。
 <img src="img/arch.jpg" width="320" height="100">
 </div>
 
-系统设计题（面向高级工程师/架构师），建议先阅读 [如何答好系统设计题][0]。
+### 系统设计题
 
-- [如何设计一个IM系统（TODO）](system_design/design_a_im_system.md)
-- [如何设计一个秒杀系统（TODO）](system_design/design_a_seckill_system.md)
+此部分面向高级工程师/架构师，建议先阅读 [如何答好系统设计题][0]。
+
+- [如何设计一个 IM 系统（TODO）](system_design/design_a_im_system.md)
+- [如何设计一个 RPC 框架（TODO）](system_design/design_a_rpc_framework.md)
 - [如何设计一个抢红包系统（TODO）](system_design/design_a_red_envelope_system.md)
 - [如何设计一个短网址系统（TODO）](system_design/design_a_shorturl_system.md)
 - [如何设计一个连接池（TODO）](system_design/how_to_design_a_connection_pool.md)
 - [如何设计一个海量的任务调度系统（TODO）](system_design/how_to_design_a_task_scheduling_system.md)
 - [如何设计一个高可用性的系统（TODO）](system_design/design_ha_system.md)
-- [如何设计一个 RPC 框架（TODO）](system_design/design_a_rpc_framework.md)
 - [如何设计一个消息队列（TODO）](system_design/design_a_message_queue.md)
 - [如何设计微博的点赞功能（TODO）](system_design/design_a_like_function.md)
 - [如何设计社交 APP 的朋友圈功能（TODO）](system_design/design_a_friend_circle_function.md)
 - [如何设计 Github 或 Tweet 的 Feed 流功能（TODO）](system_design/design_a_feed_function.md)
+- [如何设计一个支持高并发的下单流程](system_design/design_a_support_high_qps_ordering_systerm.md)
 
 --- 
 
